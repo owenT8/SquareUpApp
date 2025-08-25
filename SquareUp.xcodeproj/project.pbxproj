@@ -6,6 +6,12 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		194E1B702E5B0288002E2BA9 /* PhoneNumberKit in Frameworks */ = {isa = PBXBuildFile; productRef = 194E1B6F2E5B0288002E2BA9 /* PhoneNumberKit */; };
+		194E1B752E5B0288002E2BA9 /* PhoneNumberKit-Static in Frameworks */ = {isa = PBXBuildFile; productRef = 194E1B742E5B0288002E2BA9 /* PhoneNumberKit-Static */; };
+		199503F62E5A597500515C13 /* notes.txt in Resources */ = {isa = PBXBuildFile; fileRef = 199503F42E5A596C00515C13 /* notes.txt */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		199503AE2E5A32A600515C13 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -23,10 +29,24 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		194E1B762E5B0288002E2BA9 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		199503A02E5A32A400515C13 /* SquareUp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SquareUp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		199503AD2E5A32A600515C13 /* SquareUpTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SquareUpTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		199503B72E5A32A600515C13 /* SquareUpUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SquareUpUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		199503F42E5A596C00515C13 /* notes.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = notes.txt; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -52,6 +72,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				194E1B702E5B0288002E2BA9 /* PhoneNumberKit in Frameworks */,
+				194E1B752E5B0288002E2BA9 /* PhoneNumberKit-Static in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -72,6 +94,13 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		194E1B692E5B00D4002E2BA9 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		199503972E5A32A400515C13 = {
 			isa = PBXGroup;
 			children = (
@@ -79,6 +108,8 @@
 				199503B02E5A32A600515C13 /* SquareUpTests */,
 				199503BA2E5A32A600515C13 /* SquareUpUITests */,
 				199503A12E5A32A400515C13 /* Products */,
+				199503F42E5A596C00515C13 /* notes.txt */,
+				194E1B692E5B00D4002E2BA9 /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -102,6 +133,7 @@
 				1995039C2E5A32A400515C13 /* Sources */,
 				1995039D2E5A32A400515C13 /* Frameworks */,
 				1995039E2E5A32A400515C13 /* Resources */,
+				194E1B762E5B0288002E2BA9 /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
@@ -112,6 +144,8 @@
 			);
 			name = SquareUp;
 			packageProductDependencies = (
+				194E1B6F2E5B0288002E2BA9 /* PhoneNumberKit */,
+				194E1B742E5B0288002E2BA9 /* PhoneNumberKit-Static */,
 			);
 			productName = SquareUp;
 			productReference = 199503A02E5A32A400515C13 /* SquareUp.app */;
@@ -195,6 +229,9 @@
 			);
 			mainGroup = 199503972E5A32A400515C13;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				194E1B6E2E5B0275002E2BA9 /* XCRemoteSwiftPackageReference "PhoneNumberKit" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 199503A12E5A32A400515C13 /* Products */;
 			projectDirPath = "";
@@ -212,6 +249,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				199503F62E5A597500515C13 /* notes.txt in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -393,8 +431,10 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = SquareUp/SquareUp.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = CS6NB894K4;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -420,8 +460,10 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = SquareUp/SquareUp.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = CS6NB894K4;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -550,6 +592,30 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		194E1B6E2E5B0275002E2BA9 /* XCRemoteSwiftPackageReference "PhoneNumberKit" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/marmelroy/PhoneNumberKit";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 4.1.4;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		194E1B6F2E5B0288002E2BA9 /* PhoneNumberKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 194E1B6E2E5B0275002E2BA9 /* XCRemoteSwiftPackageReference "PhoneNumberKit" */;
+			productName = PhoneNumberKit;
+		};
+		194E1B742E5B0288002E2BA9 /* PhoneNumberKit-Static */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 194E1B6E2E5B0275002E2BA9 /* XCRemoteSwiftPackageReference "PhoneNumberKit" */;
+			productName = "PhoneNumberKit-Static";
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 199503982E5A32A400515C13 /* Project object */;
 }
