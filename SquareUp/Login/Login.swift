@@ -10,10 +10,16 @@ import AuthenticationServices
 
 struct Login: View {
     @Binding var currentScreen: AppScreen
+    @Binding var squareUpClient: SquareUpClient
+    @Binding var keychainHelper: KeychainHelper
     
     @State private var fieldValues: [String : String] = [:]
     @State private var isLoading: Bool = false
     @State private var fieldErrors: [String : String] = [:]
+    @State private var errorMessage: String?
+    @State private var loginData: [String: String]?
+    
+    @EnvironmentObject var appState: AppState
     
     var body: some View {
         ZStack {
@@ -83,8 +89,13 @@ struct Login: View {
                             isLoading: isLoading,
                             onTap: {
                                 if validateForm(fieldValues: fieldValues, fieldErrors: &fieldErrors) {
-                                    //submitLogin()
-                                    print("Logged in")
+                                    Task {
+                                        do {
+                                            let loginResponse = await submitLogin()
+                                            print(loginData)
+                                        }
+                                    }
+                                   
                                 }
                             }
                         )
@@ -138,6 +149,32 @@ struct Login: View {
         }
         
         return isValid
+    }
+    
+    private func submitLogin() async -> Bool {
+        isLoading = true
+        errorMessage = nil
+        
+        let data = [
+            "username" : fieldValues["userId"],
+            "password" : fieldValues["password"]
+        ]
+        
+        do {
+            let result: [String : String] = try await squareUpClient.login(data: data)
+            guard let token = result["token"] else {
+                print("Error parsing login response")
+                return false
+            }
+            loginData = result
+            KeychainHelper.save(token, service: "squareup.server", account: "squareUp")
+        } catch {
+            errorMessage = "Login failed: \(error.localizedDescription)"
+        }
+        
+        isLoading = false
+        appState.isLoggedIn = true
+        return true
     }
 }
 

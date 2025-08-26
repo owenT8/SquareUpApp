@@ -14,18 +14,21 @@ enum AppScreen {
 
 struct ContentView: View {
     @State var currentScreenGroup: AppScreen = .splash
+    @State var squareUpClient: SquareUpClient = .init()
+    @State var keychainHelper: KeychainHelper = .init()
+    
+    @EnvironmentObject var appState: AppState
     
     var body: some View {
-        switch currentScreenGroup {
-            case .splash:
-                OpeningScreen(onNext: {currentScreenGroup = .login})
-            case .login:
-                Login(currentScreen: $currentScreenGroup)
-            case .createAccount:
-                CreateAccount(currentMainScreen: $currentScreenGroup)
-            case .main:
-                Text("MainView")
-        
+        if appState.isLoggedIn {
+            Text("MainView")
+        } else if (currentScreenGroup == .splash) {
+            OpeningScreen(onNext: {currentScreenGroup = .login})
+        } else if (currentScreenGroup == .login) {
+            Login(currentScreen: $currentScreenGroup, squareUpClient: $squareUpClient, keychainHelper: $keychainHelper)
+            .environmentObject(appState)
+        } else if (currentScreenGroup == .createAccount) {
+            CreateAccount(currentMainScreen: $currentScreenGroup)
         }
     }
 }

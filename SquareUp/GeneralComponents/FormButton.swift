@@ -45,6 +45,7 @@ struct FormButton: View {
             .shadow(color: button.type == .primary ? Color("PrimaryColor").opacity(0.3) : Color.clear, radius: 8, x: 0, y: 4)
             .scaleEffect(isPressed ? 0.95 : 1.0)
             .animation(.easeInOut(duration: 0.1), value: isPressed)
+            .disabled(isLoading)
         }
         .disabled(button.type == .link || isLoading)
         .accessibilityLabel(button.label)
