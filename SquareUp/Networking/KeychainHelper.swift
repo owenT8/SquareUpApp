@@ -9,60 +9,41 @@ import Foundation
 import Security
 
 struct KeychainHelper {
-    
-    static func save(_ value: String, service: String, account: String) {
-        guard let data = value.data(using: .utf8) else { return }
-        
-        // Delete existing item if any
+    static func save(_ data: Data, service: String, account: String) {
         let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account
+            kSecClass as String       : kSecClassGenericPassword,
+            kSecAttrService as String : service,
+            kSecAttrAccount as String : account,
+            kSecValueData as String   : data
         ]
+
+        // Delete old item first
         SecItemDelete(query as CFDictionary)
-        
-        // Add new item
-        let addQuery: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account,
-            kSecValueData as String: data
-        ]
-        
-        let status = SecItemAdd(addQuery as CFDictionary, nil)
-        if status != errSecSuccess {
-            print("Keychain save failed: \(status)")
-        }
+        // Add new one
+        SecItemAdd(query as CFDictionary, nil)
     }
-    
-    static func read(service: String, account: String) -> String? {
+
+    static func read(service: String, account: String) -> Data? {
         let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account,
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne
+            kSecClass as String       : kSecClassGenericPassword,
+            kSecAttrService as String : service,
+            kSecAttrAccount as String : account,
+            kSecReturnData as String  : true,
+            kSecMatchLimit as String  : kSecMatchLimitOne
         ]
-        
-        var item: AnyObject?
-        let status = SecItemCopyMatching(query as CFDictionary, &item)
-        
-        guard status == errSecSuccess,
-              let data = item as? Data,
-              let token = String(data: data, encoding: .utf8) else {
-            return nil
-        }
-        
-        return token
+
+        var result: AnyObject?
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
+
+        return status == errSecSuccess ? result as? Data : nil
     }
-    
+
     static func delete(service: String, account: String) {
         let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
-            kSecAttrAccount as String: account
+            kSecClass as String       : kSecClassGenericPassword,
+            kSecAttrService as String : service,
+            kSecAttrAccount as String : account
         ]
-        
         SecItemDelete(query as CFDictionary)
     }
 }

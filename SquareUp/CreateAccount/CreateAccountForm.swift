@@ -17,7 +17,9 @@ struct CreateAccountForm: View {
     @State private var tempValues: [String : String]
     
     let phoneNumberKit = PhoneNumberUtility()
-    
+        
+    @EnvironmentObject var appState: AppState
+        
     init(config: CreateAccountFormConfig, fieldValues: Binding<[String : String]>, fieldErrors: Binding<[String : String]>, screenStack: Binding<[CreateAccountScreen]>) {
         self.config = config
         _fieldValues = fieldValues
@@ -66,9 +68,6 @@ struct CreateAccountForm: View {
                                 .font(.system(size: 24, weight: .bold, design: .rounded))
                                 .foregroundColor(.primary)
                         
-                            if config.name == "verificationCode" {
-                                
-                            }
                         }
                         .padding(.top, 20)
                         
@@ -106,8 +105,39 @@ struct CreateAccountForm: View {
                                     button: button,
                                     isLoading: isLoading,
                                     onTap: {
-                                        if button.id == "createPassword" && verifyOTP(fieldValues: &fieldValues, fieldErrors: &fieldErrors) {
-                                            buttonAction(button, screenStack: &screenStack)
+                                        if button.id == "signUp" {
+                                            let data = ["email": fieldValues["email"] ?? ""]
+                                            Task {
+                                                do {
+                                                    isLoading = true
+                                                    let response = try await SquareUpClient.shared.sendOtpCode(data: data)
+                                                    isLoading = false
+                                                    if response == 200 {
+                                                        screenStack.append(.verificationCode)
+                                                    } else {
+                                                        showError()
+                                                    }
+                                                } catch {
+                                                    showError()
+                                                }
+                                            }
+                                        } else if button.id == "verify" {
+                                            Task {
+                                                do {
+                                                    isLoading = true
+                                                    let response = try await SquareUpClient.shared.signUp(data: fieldValues)
+                                                    isLoading = false
+                                                    if response == 201 {
+                                                        fieldValues = [:]
+                                                        appState.isLoggedIn = true
+                                                        screenStack.append(.exit)
+                                                    } else {
+                                                        showError()
+                                                    }
+                                                } catch {
+                                                    showError()
+                                                }
+                                            }
                                         } else if button.type != .primary {
                                             for field in config.fields {
                                                 fieldValues[field.id] = nil
@@ -126,6 +156,12 @@ struct CreateAccountForm: View {
             }
         }
     }
+    
+    private func showError() {
+        appState.errorMessage = "Something went wrong. Please try again later."
+        appState.showErrorToast = true
+        screenStack.append(.exit)
+    }
 
     private func isPrimaryButton(_ button: ButtonConfig) -> Bool {
         return button.type == .primary
@@ -141,6 +177,7 @@ struct CreateAccountForm: View {
             case .goToPhoneSignup:
                 screenStack.popLast()
                 screenStack.append(.phone)
+            case .goToPasswordSignup: screenStack.append(.password)
             case .goToVerificationCode: screenStack.append(.verificationCode)
             default: break
         }
@@ -171,7 +208,7 @@ struct CreateAccountForm: View {
         return isValid
     }
     
-    private func verifyOTP(fieldValues: inout [String : String], fieldErrors: inout [String : String]) -> Bool {
+    private func verifyOTP(fieldValues: inout [String : String], fieldErrors: inout [String : String]) async -> Bool {
         fieldErrors.removeAll()
         var isValid = true
         

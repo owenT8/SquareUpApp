@@ -7,7 +7,7 @@
 import SwiftUI
 
 enum CreateAccountScreen {
-    case name, email, phone, verificationCode
+    case name, email, phone, password, verificationCode, exit
 }
 
 struct CreateAccount: View {
@@ -16,6 +16,8 @@ struct CreateAccount: View {
     @State var screenStack: [CreateAccountScreen] = [.name]
     @State var fieldValues: [String: String] = [:]
     @State var fieldErrors: [String: String] = [:]
+    
+    @EnvironmentObject var appState: AppState
     
     var body: some View {
         ZStack {
@@ -35,16 +37,15 @@ struct CreateAccount: View {
                     screenStack: $screenStack
                 )
                 .transition(.opacity)
+            } else if screenStack.last == .password {
+                CreateAccountForm(
+                    config: passwordConfig,
+                    fieldValues: $fieldValues,
+                    fieldErrors: $fieldErrors,
+                    screenStack: $screenStack
+                )
+                .transition(.opacity)
             }
-//            else if screenStack.last == .phone {
-//                CreateAccountForm(
-//                    config: phoneConfig,
-//                    fieldValues: $fieldValues,
-//                    fieldErrors: $fieldErrors,
-//                    screenStack: $screenStack
-//                )
-//                .transition(.opacity)
-//            }
             else if screenStack.last == .verificationCode {
                 CreateAccountForm(
                     config: verifyUserId,
@@ -60,17 +61,17 @@ struct CreateAccount: View {
             if screenStack.isEmpty {
                 currentMainScreen = .login
             }
-        }
-        .onChange(of: fieldValues) {
-            print(fieldValues)
+            if screenStack.last == .exit {
+                appState.isLoggedIn = true
+            }
         }
     }
     
     let nameConfig: CreateAccountFormConfig = .init(
         name: "name",
         fields: [
-            FieldConfig(id: "firstName", type: .firstName, placeholder: "First Name"),
-            FieldConfig(id: "lastName", type: .lastName, placeholder: "Last Name"),
+            FieldConfig(id: "first_name", type: .firstName, placeholder: "First Name"),
+            FieldConfig(id: "last_name", type: .lastName, placeholder: "Last Name"),
             FieldConfig(id: "username", type: .userName, placeholder: "Username")
         ],
         buttons: [
@@ -84,40 +85,29 @@ struct CreateAccount: View {
             FieldConfig(id: "email", type: .email, placeholder: "Email Address")
         ],
         buttons: [
-            ButtonConfig(id: "email", type: .primary, label: "Next", action: .goToVerificationCode),
-//            ButtonConfig(id: "signUpWithPhone", type: .secondary, label: "Sign Up with Phone", action: .goToPhoneSignup)
+            ButtonConfig(id: "email", type: .primary, label: "Next", action: .goToPasswordSignup)
         ]
     )
-    
-//    let phoneConfig: CreateAccountFormConfig = .init(
-//        name: "phoneNumber",
-//        fields: [
-//            FieldConfig(id: "phoneNumber", type: .phone, placeholder: "Phone Number")
-//        ],
-//        buttons: [
-//            ButtonConfig(id: "phoneNumber", type: .primary, label: "Next", action: .goToVerificationCode),
-//            ButtonConfig(id: "signUpWithEmail", type: .secondary, label: "Sign Up with Email", action: .goToEmailSignup)
-//        ]
-//    )
-//    
-    let verifyUserId: CreateAccountFormConfig = .init(
-        name: "verificationCode",
-        fields: [
-            FieldConfig(id: "verificationCode", type: .verificationCode, placeholder: "Verification Code")
-        ],
-        buttons: [
-            ButtonConfig(id: "createPassword", type: .primary, label: "Verify", action: .goToPasswordSignup)
-        ]
-    )
-    
+
     let passwordConfig: CreateAccountFormConfig = .init(
         name: "password",
         fields: [
             FieldConfig(id: "password", type: .password, placeholder: "Password")
         ],
         buttons: [
-            ButtonConfig(id: "signUp", type: .primary, label: "Sign Up", action: .submitSignup)
+            ButtonConfig(id: "signUp", type: .primary, label: "Sign Up", action: .goToVerificationCode)
         ]
     )
+    
+    let verifyUserId: CreateAccountFormConfig = .init(
+        name: "verificationCode",
+        fields: [
+            FieldConfig(id: "otp", type: .verificationCode, placeholder: "Verification Code")
+        ],
+        buttons: [
+            ButtonConfig(id: "verify", type: .primary, label: "Verify", action: .goToHome)
+        ]
+    )
+
 }
 

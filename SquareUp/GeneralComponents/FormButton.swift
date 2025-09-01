@@ -109,6 +109,7 @@ enum ButtonAction {
     case goToEmailSignup
     case goToPhoneSignup
     case goToPasswordSignup
+    case goToHome
     case goToVerificationCode
     case submitSignup
     case goToLogin

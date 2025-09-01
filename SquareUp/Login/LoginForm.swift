@@ -1,0 +1,147 @@
+//
+//  LoginForm.swift
+//  SquareUp
+//
+//  Created by Owen  Taylor on 8/31/25.
+//
+import SwiftUI
+
+struct LoginForm: View {
+    @Binding var fieldValues: [String: String]
+    @Binding var fieldErrors: [String: String]
+    @Binding var currentScreen: LoginScreen
+    @Binding var currentAppScreen: AppScreen
+    
+    @EnvironmentObject var appState: AppState
+    
+    @State var isLoading: Bool = false
+    var body: some View {
+        ZStack {
+            VStack {
+                ScrollView {
+                    VStack(spacing: 30) {
+                        // Header
+                        VStack(spacing: 5) {
+                            // Logo
+                            ZStack {
+                                Image("SquareUpLogo")
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fit)
+                                    .frame(width: 130, height: 130)
+                            }
+                            
+                            Text(Constants.appName)
+                                .font(.system(size: 24, weight: .bold, design: .rounded))
+                                .foregroundColor(.primary)
+                            
+                        }
+                        .padding(.top, 20)
+                        
+                        Spacer()
+                        // Form Fields
+                        VStack(spacing: 20) {
+                            FormField(
+                                field: FieldConfig(id: "userId", type: .userId, placeholder: "email, phone, or username"),
+                                value: Binding(
+                                    get: { fieldValues["userId"] ?? "" },
+                                    set: {
+                                        fieldValues["userId"] = $0
+                                        // Clear error when user starts typing
+                                        if fieldErrors["userId"] != nil {
+                                            fieldErrors["userId"] = nil
+                                        }
+                                    }
+                                ),
+                                error: fieldErrors["userId"]
+                            )
+                            FormField(
+                                field: FieldConfig(id: "password", type: .password, placeholder: "password"),
+                                value: Binding(
+                                    get: { fieldValues["password"] ?? "" },
+                                    set: {
+                                        fieldValues["password"] = $0
+                                        // Clear error when user starts typing
+                                        if fieldErrors["password"] != nil {
+                                            fieldErrors["password"] = nil
+                                        }
+                                    }
+                                ),
+                                error: fieldErrors["password"]
+                            )
+                            
+                        }
+                        .padding(.horizontal, 30)
+                        
+                        // Buttons
+                        FormButton(
+                            button: ButtonConfig(id: "submitLogin", type: .primary, label: "Login", action: .submitLogin),
+                            isLoading: isLoading,
+                            onTap: {
+                                if validateForm(fieldValues: fieldValues, fieldErrors: &fieldErrors) {
+                                    let data = ["email": fieldValues["userId"] ?? ""]
+                                    Task {
+                                        do {
+                                            isLoading = true
+                                            let response = try await SquareUpClient.shared.sendOtpCode(data: data)
+                                            print(response)
+                                            isLoading = false
+                                            if response == 200 {
+                                                currentScreen = .verify
+                                            } else {
+                                                showError()
+                                            }
+                                        } catch {
+                                            showError()
+                                        }
+                                    }
+                                }
+                            }
+                        )
+                        .padding(.horizontal, 30)
+                        
+                        FormButton(
+                            button: ButtonConfig(id: "forgotPassword", type: .secondary, label: "Forgot Password", action: .forgotPassword),
+                            isLoading: isLoading,
+                            onTap: {
+                                print("Forgot password")
+                            }
+                        )
+                        .padding(.horizontal, 30)
+                        
+                        Spacer()
+                        
+                        FormButton(
+                            button: ButtonConfig(id: "createAccount", type: .secondary, label: "Create Account", action: .createAccount),
+                            isLoading: isLoading,
+                            onTap: {
+                                currentAppScreen = .createAccount
+                            }
+                        )
+                        .padding(.horizontal, 30)
+                    }
+                }
+            }
+        }
+    }
+    
+    private func validateForm(fieldValues: [String : String], fieldErrors: inout [String : String]) -> Bool {
+        fieldErrors.removeAll()
+        
+        var isValid = true
+        
+        for (key, value) in fieldValues {
+            if value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                fieldErrors[key] = "This field is required"
+                isValid = false
+            }
+        }
+        
+        return isValid
+    }
+    
+    private func showError() {
+        appState.errorMessage = "Something went wrong. Please try again later."
+        appState.showErrorToast = true
+        currentScreen = .login
+    }
+}

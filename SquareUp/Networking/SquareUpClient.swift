@@ -7,6 +7,7 @@
 import Foundation
 
 struct SquareUpClient {
+    static let shared = SquareUpClient()
     let host: String = "http://square-up-server.vercel.app"
     
     func GET(endpoint: String, parameters: [String: Any]? = nil) async throws -> (Data, URLResponse) {
@@ -24,6 +25,9 @@ struct SquareUpClient {
             
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
+        if let token = TokenManager.shared.accessToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
         
         // Async/await version
         let (data, response) = try await URLSession.shared.data(for: request)
@@ -41,41 +45,80 @@ struct SquareUpClient {
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let token = TokenManager.shared.accessToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
         
         request.httpBody = try JSONSerialization.data(withJSONObject: body, options: [])
         
-        print(request)
+        print(body)
         
         let (data, response) = try await URLSession.shared.data(for: request)
-        
-        print(data, response)
         
         return (data, response)
     }
     
-    func signUp(data: [String: Any]) async throws -> [String : String] {
-        let (data, _) = try await self.POST(endpoint: "/api/signup", body: data)
+    func sendOtpCode(data: [String: String]) async throws -> Int {
+        let (_, response) = try await self.POST(endpoint: "/api/send-otp", body: data)
+
+        guard let statusCode = (response as? HTTPURLResponse)?.statusCode else {
+            throw URLError(.badServerResponse)
+        }
+        
+        return statusCode
+    }
+    
+    func signUp(data: [String: Any]) async throws -> Int {
+        let (data, response) = try await self.POST(endpoint: "/api/signup", body: data)
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: String] else {
             throw URLError(.cannotParseResponse)
         }
-        return json
+        
+        guard let statusCode = (response as? HTTPURLResponse)?.statusCode else {
+            throw URLError(.badServerResponse)
+        }
+        
+        if statusCode == 201 {
+            if let token = json["token"] {
+                TokenManager.shared.saveToken(access: token)
+
+            }
+        }
+        
+        return statusCode
     }
     
-    func login(data: [String: Any]) async throws -> [String : String] {
-        print("Logging in user")
-        let (data, _) = try await self.POST(endpoint: "/api/login", body: data)
+    func login(data: [String: Any]) async throws -> Int {
+        let (data, response) = try await self.POST(endpoint: "/api/login", body: data)
         guard let json = try JSONSerialization.jsonObject(with: data, options: []) as? [String: String] else {
             throw URLError(.cannotParseResponse)
         }
-        print("Logged in with user: \(json)")
-        return json
+        
+        guard let statusCode = (response as? HTTPURLResponse)?.statusCode else {
+            throw URLError(.badServerResponse)
+        }
+        
+        if statusCode == 200 {
+            if let token = json["token"] {
+                TokenManager.shared.saveToken(access: token)
+            }
+        }
+        
+        return statusCode
     }
     
-    func verifyToken(data: [String: Any]) async throws -> Bool {
-        let (data, _) = try await self.POST(endpoint: "/api/verify-token", body: data)
-        guard let json = try JSONSerialization.jsonObject(with: data, options: []) as? [String: String] else {
+    func verifyToken() async throws -> Bool {
+        let (data, response) = try await self.POST(endpoint: "/api/verify-token", body: [:])
+        
+        guard let json = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] else {
             throw URLError(.cannotParseResponse)
         }
-        return json["valid"] == "True" || json["valid"] == "true"
+                    
+        if let isValid = json["valid"] {
+            print(json)
+            return true
+        } else {
+            return false
+        }
     }
 }
