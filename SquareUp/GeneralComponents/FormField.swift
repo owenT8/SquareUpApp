@@ -24,10 +24,14 @@ struct FormField: View {
                         .textFieldStyle(CustomTextFieldStyle(isFocused: isFocused, hasError: error != nil))
                         .focused($isFocused)
                         .textContentType(.password)
+                        .autocapitalization(.none)
+                        .disableAutocorrection(true)
                 } else if field.type == .email {
                     TextField(field.placeholder, text: $value)
                         .textFieldStyle(CustomTextFieldStyle(isFocused: isFocused, hasError: error != nil))
                         .focused($isFocused)
+                        .textContentType(.username)
+                        .keyboardType(.emailAddress)
                         .autocapitalization(.none)
                         .disableAutocorrection(true)
                 } else if field.type == .firstName {
@@ -70,7 +74,6 @@ enum FieldType {
     case text
     case userId
     case email
-    case phone
     case firstName
     case lastName
     case userName
@@ -91,8 +94,6 @@ struct CustomTextFieldStyle: TextFieldStyle {
                     .stroke(borderColor, lineWidth: borderWidth)
             )
             .shadow(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2)
-            .animation(.easeInOut(duration: 0.2), value: isFocused)
-            .animation(.easeInOut(duration: 0.2), value: hasError)
             .accessibilityLabel("Text input field")
             .accessibilityHint(hasError ? "Field has an error" : "Field is ready for input")
     }

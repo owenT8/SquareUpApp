@@ -11,10 +11,6 @@ import SwiftUI
 struct SquareUpApp: App {
     @StateObject private var appState = AppState()
     
-    init() {
-        
-    }
-    
     var body: some Scene {
         WindowGroup {
             ContentView()
@@ -24,10 +20,11 @@ struct SquareUpApp: App {
                     if let _ = TokenManager.shared.accessToken {
                         Task {
                             do {
-                                appState.isLoggedIn = try await SquareUpClient.shared.verifyToken()
-                                print(appState.isLoggedIn)
+                                let response = try await SquareUpClient.shared.verifyToken()
+                                appState.isLoggedIn = response.0
+                                appState.userInfo = response.1
                             } catch {
-                                print("Token verification failed: \(error)")
+                                showError()
                             }
                             appState.showSplash = false
                         }
@@ -36,6 +33,11 @@ struct SquareUpApp: App {
                     }
                 }
         }
+    }
+    private func showError() {
+        appState.errorMessage = "Something went wrong. Please try again later."
+        appState.showErrorToast = true
+        appState.currentScreenGroup = .login
     }
 }
 

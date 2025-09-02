@@ -129,7 +129,6 @@ struct CreateAccountForm: View {
                                                     isLoading = false
                                                     if response == 201 {
                                                         fieldValues = [:]
-                                                        appState.isLoggedIn = true
                                                         screenStack.append(.exit)
                                                     } else {
                                                         showError()
@@ -155,12 +154,21 @@ struct CreateAccountForm: View {
                 }
             }
         }
+        
+        if isLoading {
+            Color.black.opacity(0.3)
+                .edgesIgnoringSafeArea(.all)
+
+            ProgressView()
+                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                .scaleEffect(1.5)
+        }
     }
     
     private func showError() {
         appState.errorMessage = "Something went wrong. Please try again later."
         appState.showErrorToast = true
-        screenStack.append(.exit)
+        screenStack.append(.error)
     }
 
     private func isPrimaryButton(_ button: ButtonConfig) -> Bool {
@@ -170,13 +178,7 @@ struct CreateAccountForm: View {
     private func buttonAction(_ button: ButtonConfig, screenStack: inout [CreateAccountScreen]) {
         switch button.action {
             case .goToEmailSignup:
-                if screenStack.last == .phone {
-                    screenStack.popLast()
-                }
                 screenStack.append(.email)
-            case .goToPhoneSignup:
-                screenStack.popLast()
-                screenStack.append(.phone)
             case .goToPasswordSignup: screenStack.append(.password)
             case .goToVerificationCode: screenStack.append(.verificationCode)
             default: break
@@ -203,21 +205,6 @@ struct CreateAccountForm: View {
                 fieldErrors[key] = "Password have at least 6 characters, one digit, and one special character"
                 isValid = false
             }
-        }
-        
-        return isValid
-    }
-    
-    private func verifyOTP(fieldValues: inout [String : String], fieldErrors: inout [String : String]) async -> Bool {
-        fieldErrors.removeAll()
-        var isValid = true
-        
-        if fieldValues["verificationCode"] == "123456" {
-            fieldValues["verificationCode"] = nil
-            print("OTP verified successfully")
-        } else {
-            fieldErrors["verifiationCoed"] = "Invalid OTP"
-            isValid = false
         }
         
         return isValid

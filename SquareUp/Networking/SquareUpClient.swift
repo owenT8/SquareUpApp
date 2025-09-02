@@ -107,18 +107,17 @@ struct SquareUpClient {
         return statusCode
     }
     
-    func verifyToken() async throws -> Bool {
-        let (data, response) = try await self.POST(endpoint: "/api/verify-token", body: [:])
+    func verifyToken() async throws -> (Bool, [String: Any]) {
+        let (data, _) = try await self.POST(endpoint: "/api/verify-token", body: [:])
         
         guard let json = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] else {
             throw URLError(.cannotParseResponse)
         }
                     
-        if let isValid = json["valid"] {
-            print(json)
-            return true
+        if (json["valid"] != nil) == true {
+            return (true, json)
         } else {
-            return false
+            return (false, [:])
         }
     }
 }

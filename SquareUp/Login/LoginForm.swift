@@ -9,8 +9,7 @@ import SwiftUI
 struct LoginForm: View {
     @Binding var fieldValues: [String: String]
     @Binding var fieldErrors: [String: String]
-    @Binding var currentScreen: LoginScreen
-    @Binding var currentAppScreen: AppScreen
+    @Binding var currentLoginScreen: LoginScreen
     
     @EnvironmentObject var appState: AppState
     
@@ -41,7 +40,7 @@ struct LoginForm: View {
                         // Form Fields
                         VStack(spacing: 20) {
                             FormField(
-                                field: FieldConfig(id: "userId", type: .userId, placeholder: "email, phone, or username"),
+                                field: FieldConfig(id: "userId", type: .email, placeholder: "email or username"),
                                 value: Binding(
                                     get: { fieldValues["userId"] ?? "" },
                                     set: {
@@ -86,7 +85,7 @@ struct LoginForm: View {
                                             print(response)
                                             isLoading = false
                                             if response == 200 {
-                                                currentScreen = .verify
+                                                currentLoginScreen = .verify
                                             } else {
                                                 showError()
                                             }
@@ -114,13 +113,22 @@ struct LoginForm: View {
                             button: ButtonConfig(id: "createAccount", type: .secondary, label: "Create Account", action: .createAccount),
                             isLoading: isLoading,
                             onTap: {
-                                currentAppScreen = .createAccount
+                                appState.currentScreenGroup = .createAccount
                             }
                         )
                         .padding(.horizontal, 30)
                     }
                 }
             }
+        }
+        
+        if isLoading {
+            Color.black.opacity(0.3)
+                .edgesIgnoringSafeArea(.all)
+
+            ProgressView()
+                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                .scaleEffect(1.5)
         }
     }
     
@@ -142,6 +150,6 @@ struct LoginForm: View {
     private func showError() {
         appState.errorMessage = "Something went wrong. Please try again later."
         appState.showErrorToast = true
-        currentScreen = .login
+        appState.currentScreenGroup = .login
     }
 }

@@ -13,22 +13,30 @@ enum AppScreen {
 }
 
 struct ContentView: View {
-    @State var currentScreenGroup: AppScreen = .splash
-    @State var squareUpClient: SquareUpClient = .init()
-    @State var keychainHelper: KeychainHelper = .init()
-    
     @EnvironmentObject var appState: AppState
     
     var body: some View {
-        if (appState.showSplash || currentScreenGroup == .splash) {
-           OpeningScreen(onNext: {currentScreenGroup = .login})
-        } else if appState.isLoggedIn {
-            Text("MainView")
-        } else if (currentScreenGroup == .login) {
-            Login(currentScreen: $currentScreenGroup, squareUpClient: $squareUpClient, keychainHelper: $keychainHelper)
-        } else if (currentScreenGroup == .createAccount) {
-            CreateAccount(currentMainScreen: $currentScreenGroup)
+        ZStack {
+            if (appState.showSplash || appState.currentScreenGroup == .splash) {
+                OpeningScreen(onNext: {appState.currentScreenGroup = .login})
+            } else if appState.isLoggedIn {
+                let userInfo = appState.userInfo
+                VStack{
+                    ForEach(Array(userInfo.keys), id: \.self) { key in
+                        Text("\(key): \(userInfo[key] ?? "nil")")
+                            .padding(.vertical , 8)
+                    }
+                    Button("Logout", action: {TokenManager.shared.clearTokens(); appState.currentScreenGroup = .login; appState.isLoggedIn = false})
+                }
+            } else if (appState.currentScreenGroup == .login) {
+                Login()
+                    .transition(.opacity)
+            } else if (appState.currentScreenGroup == .createAccount) {
+                CreateAccount()
+                    .transition(.opacity)
+            }
         }
+        .animation(.easeInOut(duration: 0.25), value: appState.currentScreenGroup)
     }
 }
 

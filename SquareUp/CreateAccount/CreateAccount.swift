@@ -7,12 +7,10 @@
 import SwiftUI
 
 enum CreateAccountScreen {
-    case name, email, phone, password, verificationCode, exit
+    case name, email, password, verificationCode, exit, error
 }
 
 struct CreateAccount: View {
-    @Binding var currentMainScreen: AppScreen
-    
     @State var screenStack: [CreateAccountScreen] = [.name]
     @State var fieldValues: [String: String] = [:]
     @State var fieldErrors: [String: String] = [:]
@@ -59,10 +57,13 @@ struct CreateAccount: View {
         .animation(.easeInOut(duration: 0.25), value: screenStack.last)
         .onChange(of: screenStack) {
             if screenStack.isEmpty {
-                currentMainScreen = .login
+                appState.currentScreenGroup = .login
             }
             if screenStack.last == .exit {
                 appState.isLoggedIn = true
+            }
+            if screenStack.last == .error {
+                appState.currentScreenGroup = .login
             }
         }
     }

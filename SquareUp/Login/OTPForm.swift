@@ -9,8 +9,7 @@ import SwiftUI
 struct OTPForm: View {
     @Binding var fieldValues: [String : String]
     @Binding var fieldErrors: [String : String]
-    @Binding var currentScreen: LoginScreen
-    @Binding var currentAppScreen: AppScreen
+    @Binding var currentLoginScreen: LoginScreen
     
     @State var isLoading: Bool = false
             
@@ -24,7 +23,7 @@ struct OTPForm: View {
                         if (fieldValues["otp"] != nil) {
                             fieldValues["otp"] = nil
                         }
-                        currentScreen = .login
+                        appState.currentScreenGroup = .login
                     }) {
                         Image(systemName: "chevron.left")
                             .font(.system(size: 20, weight: .bold))
@@ -84,7 +83,7 @@ struct OTPForm: View {
                                         if response == 200 {
                                             fieldValues = [:]
                                             appState.isLoggedIn = true
-                                            currentAppScreen = .main
+                                            appState.currentScreenGroup = .main
                                         } else {
                                             showError()
                                         }
@@ -104,6 +103,6 @@ struct OTPForm: View {
     private func showError() {
         appState.errorMessage = "Something went wrong. Please try again later."
         appState.showErrorToast = true
-        currentScreen = .login
+        appState.currentScreenGroup = .login
     }
 }

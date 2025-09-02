@@ -22,17 +22,11 @@ struct FormButton: View {
             onTap()
         }) {
             HStack {
-                if isLoading {
-                    ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle(tint: buttonForeground))
-                        .scaleEffect(0.8)
-                } else {
-                    Spacer()
-                    Text(button.label)
-                        .font(.headline)
-                        .fontWeight(.semibold)
-                    Spacer()
-                }
+                Spacer()
+                Text(button.label)
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                Spacer()
             }
             .padding()
             .background(buttonBackground)

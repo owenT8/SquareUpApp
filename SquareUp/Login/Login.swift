@@ -13,33 +13,21 @@ enum LoginScreen {
 }
 
 struct Login: View {
-    @Binding var currentScreen: AppScreen
-    @Binding var squareUpClient: SquareUpClient
-    @Binding var keychainHelper: KeychainHelper
-    
     @State private var fieldValues: [String : String] = [:]
-    @State private var isLoading: Bool = false
     @State private var fieldErrors: [String : String] = [:]
-    @State private var errorMessage: String?
-    @State private var loginData: [String: String]?
     @State private var loginScreen: LoginScreen = .login
-    
-    @EnvironmentObject var appState: AppState
-    
+        
     var body: some View {
         ZStack {
             if loginScreen == .login {
-                LoginForm(fieldValues: $fieldValues, fieldErrors: $fieldErrors, currentScreen: $loginScreen, currentAppScreen: $currentScreen)
+                LoginForm(fieldValues: $fieldValues, fieldErrors: $fieldErrors, currentLoginScreen: $loginScreen)
                     .transition(.opacity)
             } else {
-                OTPForm(fieldValues: $fieldValues, fieldErrors: $fieldErrors, currentScreen: $loginScreen, currentAppScreen: $currentScreen)
+                OTPForm(fieldValues: $fieldValues, fieldErrors: $fieldErrors, currentLoginScreen: $loginScreen)
                     .transition(.opacity)
             }
         }
         .animation(.easeInOut(duration: 0.25), value: loginScreen)
-        .onChange(of: fieldValues) { screen, oldScreen in
-            print(fieldValues)
-        }
     }
 }
 
