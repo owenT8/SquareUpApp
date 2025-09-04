@@ -77,20 +77,26 @@ struct LoginForm: View {
                             isLoading: isLoading,
                             onTap: {
                                 if validateForm(fieldValues: fieldValues, fieldErrors: &fieldErrors) {
-                                    let data = ["email": fieldValues["userId"] ?? ""]
                                     Task {
                                         do {
+                                            let userId = ["userId" : fieldValues["userId"] ?? ""]
                                             isLoading = true
-                                            let response = try await SquareUpClient.shared.sendOtpCode(data: data)
-                                            print(response)
-                                            isLoading = false
-                                            if response == 200 {
-                                                currentLoginScreen = .verify
+                                            let checkResponse = try await SquareUpClient.shared.verifyLoginDetails(data: fieldValues)
+                                            if checkResponse {
+                                                let response = try await SquareUpClient.shared.sendOtpCode(data: userId)
+                                                isLoading = false
+                                                if response == 200 {
+                                                    currentLoginScreen = .verify
+                                                } else {
+                                                    showError(message: "Error sending verification. Please try again later.")
+                                                }
                                             } else {
-                                                showError()
+                                                isLoading = false
+                                                showError(message: "Wrong username or password. Please try again.")
                                             }
+                                            
                                         } catch {
-                                            showError()
+                                            showError(message: "Something went wrong. Please try again later.")
                                         }
                                     }
                                 }
@@ -147,8 +153,8 @@ struct LoginForm: View {
         return isValid
     }
     
-    private func showError() {
-        appState.errorMessage = "Something went wrong. Please try again later."
+    private func showError(message: String) {
+        appState.errorMessage = message
         appState.showErrorToast = true
         appState.currentScreenGroup = .login
     }

@@ -90,10 +90,11 @@ struct SquareUpClient {
     
     func login(data: [String: Any]) async throws -> Int {
         let (data, response) = try await self.POST(endpoint: "/api/login", body: data)
+        
         guard let json = try JSONSerialization.jsonObject(with: data, options: []) as? [String: String] else {
             throw URLError(.cannotParseResponse)
         }
-        
+      
         guard let statusCode = (response as? HTTPURLResponse)?.statusCode else {
             throw URLError(.badServerResponse)
         }
@@ -119,5 +120,18 @@ struct SquareUpClient {
         } else {
             return (false, [:])
         }
+    }
+    
+    func verifyLoginDetails(data: [String: Any]) async throws -> Bool {
+        let (data, response) = try await self.POST(endpoint: "/api/check-email-username-password", body: data)
+        
+        guard let statusCode = (response as? HTTPURLResponse)?.statusCode else {
+            throw URLError(.badServerResponse)
+        }
+        
+        if statusCode == 200 {
+            return true
+        }
+        return false
     }
 }

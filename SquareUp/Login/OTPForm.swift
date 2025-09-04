@@ -23,7 +23,7 @@ struct OTPForm: View {
                         if (fieldValues["otp"] != nil) {
                             fieldValues["otp"] = nil
                         }
-                        appState.currentScreenGroup = .login
+                        currentLoginScreen = .login
                     }) {
                         Image(systemName: "chevron.left")
                             .font(.system(size: 20, weight: .bold))
@@ -75,20 +75,18 @@ struct OTPForm: View {
                             FormButton(button: ButtonConfig(id: "verify", type: .primary, label: "Verify", action: .goToHome), isLoading: isLoading, onTap: {
                                 Task {
                                     do {
-                                        let data = ["email": fieldValues["userId"] ?? "" , "password": fieldValues["password"] ?? "", "otp": fieldValues["otp"] ?? ""]
-                                        print(data)
                                         isLoading = true
-                                        let response = try await SquareUpClient.shared.login(data: data)
+                                        let response = try await SquareUpClient.shared.login(data: fieldValues)
                                         isLoading = false
                                         if response == 200 {
                                             fieldValues = [:]
                                             appState.isLoggedIn = true
                                             appState.currentScreenGroup = .main
                                         } else {
-                                            showError()
+                                            showError(message: "Invalid verification code. Please try again.")
                                         }
                                     } catch {
-                                        showError()
+                                        showError(message: "Something went wrong. Please try again later.")
                                     }
                                 }
                             })
@@ -100,8 +98,8 @@ struct OTPForm: View {
         }
     }
     
-    private func showError() {
-        appState.errorMessage = "Something went wrong. Please try again later."
+    private func showError(message: String) {
+        appState.errorMessage = message
         appState.showErrorToast = true
         appState.currentScreenGroup = .login
     }
