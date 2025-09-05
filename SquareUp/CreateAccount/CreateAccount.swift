@@ -76,7 +76,7 @@ struct CreateAccount: View {
             FieldConfig(id: "username", type: .userName, placeholder: "Username")
         ],
         buttons: [
-            ButtonConfig(id: "next", type: .primary, label: "Next", action: .goToEmailSignup)
+            ButtonConfig(id: "username", type: .primary, label: "Next", action: .goToEmailSignup)
         ]
     )
     

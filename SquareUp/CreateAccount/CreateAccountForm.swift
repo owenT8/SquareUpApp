@@ -105,46 +105,7 @@ struct CreateAccountForm: View {
                                     button: button,
                                     isLoading: isLoading,
                                     onTap: {
-                                        if button.id == "signUp" {
-                                            let data = ["email": fieldValues["email"] ?? ""]
-                                            Task {
-                                                do {
-                                                    isLoading = true
-                                                    let response = try await SquareUpClient.shared.sendOtpCode(data: data)
-                                                    isLoading = false
-                                                    if response == 200 {
-                                                        screenStack.append(.verificationCode)
-                                                    } else {
-                                                        showError()
-                                                    }
-                                                } catch {
-                                                    showError()
-                                                }
-                                            }
-                                        } else if button.id == "verify" {
-                                            Task {
-                                                do {
-                                                    isLoading = true
-                                                    let response = try await SquareUpClient.shared.signUp(data: fieldValues)
-                                                    isLoading = false
-                                                    if response == 201 {
-                                                        fieldValues = [:]
-                                                        screenStack.append(.exit)
-                                                    } else {
-                                                        showError()
-                                                    }
-                                                } catch {
-                                                    showError()
-                                                }
-                                            }
-                                        } else if button.type != .primary {
-                                            for field in config.fields {
-                                                fieldValues[field.id] = nil
-                                            }
-                                            buttonAction(button, screenStack: &screenStack)
-                                        } else if validateForm(fieldValues: &fieldValues, fieldErrors: &fieldErrors) {
-                                            buttonAction(button, screenStack: &screenStack)
-                                        }
+                                        buttonPress(button: button)
                                     }
                                 )
                                 .padding(.horizontal, 30)
@@ -165,10 +126,12 @@ struct CreateAccountForm: View {
         }
     }
     
-    private func showError() {
-        appState.errorMessage = "Something went wrong. Please try again later."
+    private func showError(message: String = "Something went wrong. Please try again later.", returnToHome: Bool = true) {
+        appState.errorMessage = message
         appState.showErrorToast = true
-        screenStack.append(.error)
+        if (returnToHome) {
+            screenStack.append(.error)
+        }
     }
 
     private func isPrimaryButton(_ button: ButtonConfig) -> Bool {
@@ -208,5 +171,84 @@ struct CreateAccountForm: View {
         }
         
         return isValid
+    }
+    
+    private func buttonPress(button: ButtonConfig) {
+        if button.id == "signUp" {
+            let data = ["email": fieldValues["email"] ?? ""]
+            Task {
+                do {
+                    isLoading = true
+                    let response = try await SquareUpClient.shared.sendOtpCode(data: data)
+                    isLoading = false
+                    if response == 200 {
+                        screenStack.append(.verificationCode)
+                    } else {
+                        showError()
+                    }
+                } catch {
+                    showError()
+                }
+            }
+        } else if button.id == "username" {
+            let data = ["username": fieldValues["username"] ?? ""]
+            Task {
+                do {
+                    isLoading = true
+                    let response = try await SquareUpClient.shared.verifyUsername(data: data)
+                    isLoading = false
+                    if response {
+                        buttonAction(button, screenStack: &screenStack)
+                    } else {
+                        showError(message: "Username is already in use.", returnToHome: false)
+                    }
+                } catch {
+                    showError()
+                }
+            }
+        } else if button.id == "email" {
+            let data = ["email": fieldValues["email"] ?? ""]
+            if !validateForm(fieldValues: &fieldValues, fieldErrors: &fieldErrors) {
+                showError(message: "Invalid email.", returnToHome: false)
+            } else {
+                Task {
+                    do {
+                        isLoading = true
+                        let response = try await SquareUpClient.shared.verifyEmail(data: data)
+                        isLoading = false
+                        if response && validateForm(fieldValues: &fieldValues, fieldErrors: &fieldErrors) {
+                            buttonAction(button, screenStack: &screenStack)
+                        } else {
+                            showError(message: "Email is already in use.", returnToHome: false)
+                        }
+                    } catch {
+                        showError()
+                    }
+                }
+            }
+        } else if button.id == "verify" {
+            Task {
+                do {
+                    isLoading = true
+                    let response = try await SquareUpClient.shared.signUp(data: fieldValues)
+                    isLoading = false
+                    if response == 201 {
+                        fieldValues = [:]
+                        screenStack.append(.exit)
+                    } else {
+                        showError(message: "Incorrect verification code.", returnToHome: false)
+                    }
+                } catch {
+                    showError()
+                }
+            }
+        } else if button.type != .primary {
+            for field in config.fields {
+                fieldValues[field.id] = nil
+            }
+            buttonAction(button, screenStack: &screenStack)
+        } else if validateForm(fieldValues: &fieldValues, fieldErrors: &fieldErrors) {
+            buttonAction(button, screenStack: &screenStack)
+        }
     }
 }
