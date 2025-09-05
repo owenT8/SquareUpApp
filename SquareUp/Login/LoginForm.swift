@@ -34,7 +34,7 @@ struct LoginForm: View {
                                 .foregroundColor(.primary)
                             
                         }
-                        .padding(.top, 20)
+                        .padding(.top, 10)
                         
                         Spacer()
                         // Form Fields
@@ -113,7 +113,7 @@ struct LoginForm: View {
                         )
                         .padding(.horizontal, 30)
                         
-                        Spacer()
+                        Spacer(minLength: 60)
                         
                         FormButton(
                             button: ButtonConfig(id: "createAccount", type: .secondary, label: "Create Account", action: .createAccount),

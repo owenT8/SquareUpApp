@@ -32,7 +32,17 @@ struct OTPField: View {
                     .accessibilityValue(character(at: index).isEmpty ? "Empty" : character(at: index))
                 }
             }
-            // Hidden text field that actually captures input (supports paste + SMS one-time-code)
+            
+            Button("Paste Code") {
+                if let pasted = UIPasteboard.general.string {
+                    let filtered = pasted.filter { $0.isNumber }
+                    code = String(filtered.prefix(length))
+                    if code.count == length {
+                        onComplete?(code)
+                    }
+                }
+            }
+
             TextField("", text: Binding(
                 get: { code },
                 set: { newValue in

@@ -32,10 +32,10 @@ struct OTPForm: View {
                     Spacer()
                 }
                 .padding(.horizontal, 20)
-                .padding(.top, 20)
+                .padding(.top, 10)
                 
                 ScrollView {
-                    VStack(spacing: 30) {
+                    VStack(spacing: 15) {
                         // Header
                         VStack(spacing: 5) {
                             // Logo
@@ -51,7 +51,7 @@ struct OTPForm: View {
                                 .foregroundColor(.primary)
                         
                         }
-                        .padding(.top, 20)
+                        .padding(.top, 5)
                         
                         Spacer()
            
@@ -95,6 +95,14 @@ struct OTPForm: View {
                     }
                 }
             }
+        }
+        if isLoading {
+            Color.black.opacity(0.3)
+                .edgesIgnoringSafeArea(.all)
+
+            ProgressView()
+                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                .scaleEffect(1.5)
         }
     }
     
