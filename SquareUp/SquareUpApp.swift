@@ -23,7 +23,6 @@ struct SquareUpApp: App {
                             do {
                                 let response = try await SquareUpClient.shared.verifyToken()
                                 appState.isLoggedIn = response.0
-                                appState.userInfo = response.1
                             } catch {
                                 showError()
                             }

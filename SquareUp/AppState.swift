@@ -13,9 +13,7 @@ class AppState: ObservableObject {
     
     @Published var errorMessage: String?
     @Published var showErrorToast: Bool = false
-    
-    @Published var userInfo: [String: Any] = [:]
-    
+        
     @Published var successMessage: String?
     @Published var showSuccessToast: Bool = false
 }

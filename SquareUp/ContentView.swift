@@ -20,14 +20,7 @@ struct ContentView: View {
             if (appState.showSplash || appState.currentScreenGroup == .splash) {
                 OpeningScreen(onNext: {appState.currentScreenGroup = .login})
             } else if appState.isLoggedIn {
-                let userInfo = appState.userInfo
-                VStack{
-                    ForEach(Array(userInfo.keys), id: \.self) { key in
-                        Text("\(key): \(userInfo[key] ?? "nil")")
-                            .padding(.vertical , 8)
-                    }
-                    Button("Logout", action: {TokenManager.shared.clearTokens(); appState.currentScreenGroup = .login; appState.isLoggedIn = false})
-                }
+                Home()
             } else if (appState.currentScreenGroup == .login) {
                 Login()
                     .transition(.opacity)
@@ -38,8 +31,4 @@ struct ContentView: View {
         }
         .animation(.easeInOut(duration: 0.25), value: appState.currentScreenGroup)
     }
-}
-
-#Preview {
-    ContentView()
 }

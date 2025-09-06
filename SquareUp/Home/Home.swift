@@ -10,20 +10,18 @@ enum HomePage {
     case socail, balances, profile
 }
 
-struct SlideView: View {
+struct Home: View {
     @State private var selection = 0
     let pages = [Color.red, Color.green, Color.blue] // replace with
     struct TabItem {
         let title: String
         let icon: String
-        let color: Color
-        let view: any View
     }
     
     let tabs: [TabItem] = [
-        TabItem(title: "Home", icon: "house.fill", color: .gray, view: Social()),
-        TabItem(title: "Friends", icon: "person.2.fill", color: .gray, view: Friends()),
-        TabItem(title: "Profile", icon: "person.crop.circle.fill", color: .gray, view: Profile())
+        TabItem(title: "Home", icon: "house.fill"),
+        TabItem(title: "Friends", icon: "person.2.fill"),
+        TabItem(title: "Profile", icon: "person.crop.circle.fill")
     ]
     
     var body: some View {
@@ -65,6 +63,7 @@ struct SlideView: View {
                 .background(.ultraThinMaterial) // blurry floating effect
                 .clipShape(Capsule())
                 .shadow(radius: 5)
+                .padding(.bottom, 5)
             }
             .padding(.horizontal, 20)
         }
@@ -73,6 +72,6 @@ struct SlideView: View {
 
 struct SlideView_Previews: PreviewProvider {
     static var previews: some View {
-        SlideView()
+        Home()
     }
 }
