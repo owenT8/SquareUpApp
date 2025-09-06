@@ -9,7 +9,7 @@ import SwiftUI
 import AuthenticationServices
 
 enum LoginScreen {
-    case login, verify
+    case login, verify, forgotPassword
 }
 
 struct Login: View {
@@ -22,7 +22,10 @@ struct Login: View {
             if loginScreen == .login {
                 LoginForm(fieldValues: $fieldValues, fieldErrors: $fieldErrors, currentLoginScreen: $loginScreen)
                     .transition(.opacity)
-            } else {
+            } else if loginScreen == .forgotPassword {
+                ForgotPassword(currentLoginScreen: $loginScreen)
+                    .transition(.opacity)
+            }else {
                 OTPForm(fieldValues: $fieldValues, fieldErrors: $fieldErrors, currentLoginScreen: $loginScreen)
                     .transition(.opacity)
             }

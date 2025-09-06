@@ -1,22 +1,45 @@
 //
-//  LoginForm.swift
+//  NewPasswordForm.swift
 //  SquareUp
 //
-//  Created by Owen  Taylor on 8/31/25.
+//  Created by Owen  Taylor on 9/5/25.
 //
 import SwiftUI
 
-struct LoginForm: View {
+struct NewPasswordForm: View {
     @Binding var fieldValues: [String: String]
     @Binding var fieldErrors: [String: String]
-    @Binding var currentLoginScreen: LoginScreen
+    @Binding var currentForgotPasswordScreen: ForgotPasswordScreen
     
     @EnvironmentObject var appState: AppState
     
     @State var isLoading: Bool = false
     var body: some View {
         ZStack {
+            
+            Color("BackgroundColor")
+                .ignoresSafeArea()
+            
             VStack {
+                HStack {
+                    Button(action: {
+                        if (fieldValues["otp"] != nil) {
+                            fieldValues["otp"] = nil
+                        }
+                        if (fieldValues["password"] != nil) {
+                            fieldValues["password"] = nil
+                        }
+                        currentForgotPasswordScreen = .userId
+                    }) {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundColor(.primary)
+                    }
+                    Spacer()
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 20)
+                
                 ScrollView {
                     VStack(spacing: 30) {
                         // Header
@@ -39,22 +62,20 @@ struct LoginForm: View {
                         Spacer()
                         // Form Fields
                         VStack(spacing: 20) {
-                            FormField(
-                                field: FieldConfig(id: "userId", type: .email, placeholder: "email or username"),
-                                value: Binding(
-                                    get: { fieldValues["userId"] ?? "" },
-                                    set: {
-                                        fieldValues["userId"] = $0
-                                        // Clear error when user starts typing
-                                        if fieldErrors["userId"] != nil {
-                                            fieldErrors["userId"] = nil
-                                        }
+                            OTPField(code: Binding(
+                                get: {
+                                    fieldValues["otp"] ?? ""
+                                },
+                                set: {
+                                    fieldValues["otp"] = $0
+                                    // Clear error when user starts typing
+                                    if fieldErrors["otp"] != nil {
+                                        fieldErrors["otp"] = nil
                                     }
-                                ),
-                                error: fieldErrors["userId"]
-                            )
+                                }
+                            ))
                             FormField(
-                                field: FieldConfig(id: "password", type: .password, placeholder: "password"),
+                                field: FieldConfig(id: "password", type: .password, placeholder: "New Password"),
                                 value: Binding(
                                     get: { fieldValues["password"] ?? "" },
                                     set: {
@@ -67,59 +88,31 @@ struct LoginForm: View {
                                 ),
                                 error: fieldErrors["password"]
                             )
-                            
                         }
                         .padding(.horizontal, 30)
                         
                         // Buttons
                         FormButton(
-                            button: ButtonConfig(id: "submitLogin", type: .primary, label: "Login", action: .submitLogin),
+                            button: ButtonConfig(id: "submitPasswordReset", type: .primary, label: "Submit Password Reset", action: .submitPasswordReset),
                             isLoading: isLoading,
                             onTap: {
                                 if validateForm(fieldValues: fieldValues, fieldErrors: &fieldErrors) {
                                     Task {
                                         do {
-                                            let userId = ["userId" : fieldValues["userId"] ?? ""]
                                             isLoading = true
-                                            let checkResponse = try await SquareUpClient.shared.verifyLoginDetails(data: fieldValues)
-                                            if checkResponse {
-                                                let response = try await SquareUpClient.shared.sendOtpCode(data: userId)
-                                                isLoading = false
-                                                if response == 200 {
-                                                    currentLoginScreen = .verify
-                                                } else {
-                                                    showError(message: "Error sending verification. Please try again later.")
-                                                }
+                                            let response = try await SquareUpClient.shared.resetPassword(data: fieldValues)
+                                            isLoading = false
+                                            if response {
+                                                showSuccess(message: "Password reset successful. Please login with your new password.")
+                                                currentForgotPasswordScreen = .exit
                                             } else {
-                                                isLoading = false
-                                                showError(message: "Wrong username or password. Please try again.")
+                                                showError(message: "Reset password failed. Please try again later.")
                                             }
-                                            
                                         } catch {
                                             showError(message: "Something went wrong. Please try again later.")
                                         }
                                     }
                                 }
-                            }
-                        )
-                        .padding(.horizontal, 30)
-                        
-                        FormButton(
-                            button: ButtonConfig(id: "forgotPassword", type: .secondary, label: "Forgot Password", action: .forgotPassword),
-                            isLoading: isLoading,
-                            onTap: {
-                                currentLoginScreen = .forgotPassword
-                            }
-                        )
-                        .padding(.horizontal, 30)
-                        
-                        Spacer(minLength: 60)
-                        
-                        FormButton(
-                            button: ButtonConfig(id: "createAccount", type: .secondary, label: "Create Account", action: .createAccount),
-                            isLoading: isLoading,
-                            onTap: {
-                                appState.currentScreenGroup = .createAccount
                             }
                         )
                         .padding(.horizontal, 30)
@@ -140,14 +133,15 @@ struct LoginForm: View {
     
     private func validateForm(fieldValues: [String : String], fieldErrors: inout [String : String]) -> Bool {
         fieldErrors.removeAll()
-        
         var isValid = true
         
-        for (key, value) in fieldValues {
-            if value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                fieldErrors[key] = "This field is required"
-                isValid = false
-            }
+        if fieldValues["password"] == nil || !(fieldValues["password"]?.isValidPassword() ?? false) {
+            fieldErrors["password"] = "Password have at least 6 characters, one digit, and one special character"
+            isValid = false
+        }
+        if fieldValues["otp"] == nil || (fieldValues["otp"]?.count ?? 0) != 6 {
+            fieldErrors["otp"] = "This field is required"
+            isValid = false
         }
         
         return isValid
@@ -156,6 +150,11 @@ struct LoginForm: View {
     private func showError(message: String) {
         appState.errorMessage = message
         appState.showErrorToast = true
+        appState.currentScreenGroup = .login
+    }
+    private func showSuccess(message: String) {
+        appState.successMessage = message
+        appState.showSuccessToast = true
         appState.currentScreenGroup = .login
     }
 }

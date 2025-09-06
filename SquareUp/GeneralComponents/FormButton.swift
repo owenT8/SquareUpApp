@@ -107,4 +107,5 @@ enum ButtonAction {
     case goToVerificationCode
     case submitSignup
     case goToLogin
+    case submitPasswordReset
 }

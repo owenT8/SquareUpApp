@@ -10,7 +10,12 @@ class AppState: ObservableObject {
     @Published var isLoggedIn: Bool = false
     @Published var showSplash: Bool = true
     @Published var currentScreenGroup: AppScreen = .splash
+    
     @Published var errorMessage: String?
     @Published var showErrorToast: Bool = false
+    
     @Published var userInfo: [String: Any] = [:]
+    
+    @Published var successMessage: String?
+    @Published var showSuccessToast: Bool = false
 }

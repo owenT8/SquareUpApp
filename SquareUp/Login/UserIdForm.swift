@@ -1,15 +1,15 @@
 //
-//  LoginForm.swift
+//  ForgotPasswordForm.swift
 //  SquareUp
 //
-//  Created by Owen  Taylor on 8/31/25.
+//  Created by Owen  Taylor on 9/5/25.
 //
 import SwiftUI
 
-struct LoginForm: View {
+struct UserIdForm: View {
     @Binding var fieldValues: [String: String]
     @Binding var fieldErrors: [String: String]
-    @Binding var currentLoginScreen: LoginScreen
+    @Binding var currentForgotPasswordScreen: ForgotPasswordScreen
     
     @EnvironmentObject var appState: AppState
     
@@ -17,6 +17,22 @@ struct LoginForm: View {
     var body: some View {
         ZStack {
             VStack {
+                HStack {
+                    Button(action: {
+                        if (fieldValues["userId"] != nil) {
+                            fieldValues["userId"] = nil
+                        }
+                        currentForgotPasswordScreen = .exit
+                    }) {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundColor(.primary)
+                    }
+                    Spacer()
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 20)
+                
                 ScrollView {
                     VStack(spacing: 30) {
                         // Header
@@ -53,73 +69,30 @@ struct LoginForm: View {
                                 ),
                                 error: fieldErrors["userId"]
                             )
-                            FormField(
-                                field: FieldConfig(id: "password", type: .password, placeholder: "password"),
-                                value: Binding(
-                                    get: { fieldValues["password"] ?? "" },
-                                    set: {
-                                        fieldValues["password"] = $0
-                                        // Clear error when user starts typing
-                                        if fieldErrors["password"] != nil {
-                                            fieldErrors["password"] = nil
-                                        }
-                                    }
-                                ),
-                                error: fieldErrors["password"]
-                            )
-                            
                         }
                         .padding(.horizontal, 30)
                         
                         // Buttons
                         FormButton(
-                            button: ButtonConfig(id: "submitLogin", type: .primary, label: "Login", action: .submitLogin),
+                            button: ButtonConfig(id: "submitUserId", type: .primary, label: "Send Verification Code", action: .submitPasswordReset),
                             isLoading: isLoading,
                             onTap: {
                                 if validateForm(fieldValues: fieldValues, fieldErrors: &fieldErrors) {
                                     Task {
                                         do {
-                                            let userId = ["userId" : fieldValues["userId"] ?? ""]
                                             isLoading = true
-                                            let checkResponse = try await SquareUpClient.shared.verifyLoginDetails(data: fieldValues)
-                                            if checkResponse {
-                                                let response = try await SquareUpClient.shared.sendOtpCode(data: userId)
-                                                isLoading = false
-                                                if response == 200 {
-                                                    currentLoginScreen = .verify
-                                                } else {
-                                                    showError(message: "Error sending verification. Please try again later.")
-                                                }
+                                            let response = try await SquareUpClient.shared.sendOtpCode(data: fieldValues)
+                                            isLoading = false
+                                            if response == 200 {
+                                                currentForgotPasswordScreen = .newPassword
                                             } else {
-                                                isLoading = false
-                                                showError(message: "Wrong username or password. Please try again.")
+                                                showError(message: "Error sending verification. Please try again later.")
                                             }
-                                            
                                         } catch {
                                             showError(message: "Something went wrong. Please try again later.")
                                         }
                                     }
                                 }
-                            }
-                        )
-                        .padding(.horizontal, 30)
-                        
-                        FormButton(
-                            button: ButtonConfig(id: "forgotPassword", type: .secondary, label: "Forgot Password", action: .forgotPassword),
-                            isLoading: isLoading,
-                            onTap: {
-                                currentLoginScreen = .forgotPassword
-                            }
-                        )
-                        .padding(.horizontal, 30)
-                        
-                        Spacer(minLength: 60)
-                        
-                        FormButton(
-                            button: ButtonConfig(id: "createAccount", type: .secondary, label: "Create Account", action: .createAccount),
-                            isLoading: isLoading,
-                            onTap: {
-                                appState.currentScreenGroup = .createAccount
                             }
                         )
                         .padding(.horizontal, 30)
@@ -159,3 +132,4 @@ struct LoginForm: View {
         appState.currentScreenGroup = .login
     }
 }
+
