@@ -8,10 +8,10 @@ import SwiftUI
 
 struct Social: View {
     let items: [Item] = [
-        .init(title: "Groceries", subtitle: "Weekly shop", details: "Milk, eggs, bread, fruit, veggies.", firstName: "Owen", lastName: "Taylor"),
-        .init(title: "Gym", subtitle: "Workout plan", details: "Push/Pull/Legs split.", firstName: "Owen", lastName: "Taylor"),
-        .init(title: "Trip", subtitle: "Weekend trip", details: "Packing list: charger, jacket, camera.", firstName: "Owen", lastName: "Taylor"),
-        .init(title: "Project", subtitle: "App v1.2", details: "Finish OTP UI, add analytics, write tests.", firstName: "Owen", lastName: "Taylor")
+        .init(firstName: "Owen", lastName: "Taylor"),
+        .init(firstName: "Emily", lastName: "Clark"),
+        .init(firstName: "Michael", lastName: "Brown"),
+        .init(firstName: "Sophia", lastName: "Davis")
     ]
     
     var body: some View {
@@ -28,3 +28,4 @@ struct Social_Previews: PreviewProvider {
         Social()
     }
 }
+

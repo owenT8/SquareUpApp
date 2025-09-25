@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-struct Item: Identifiable {
+struct FriendItem: Identifiable {
     let id = UUID()
     let title: String
     let subtitle: String
@@ -17,7 +17,7 @@ struct Item: Identifiable {
 }
 
 struct Friends: View {
-    let items: [Item] = [
+    let items: [FriendItem] = [
         .init(title: "Groceries", subtitle: "Weekly shop", details: "Milk, eggs, bread, fruit, veggies.", firstName: "Owen", lastName: "Taylor"),
         .init(title: "Gym", subtitle: "Workout plan", details: "Push/Pull/Legs split.", firstName: "Owen", lastName: "Taylor"),
         .init(title: "Trip", subtitle: "Weekend trip", details: "Packing list: charger, jacket, camera.", firstName: "Owen", lastName: "Taylor"),
@@ -52,13 +52,13 @@ struct Friends: View {
         }
     }
     
-    private func makePayment(item: Item) -> String {
+    private func makePayment(item: FriendItem) -> String {
         return item.firstName + " " + item.lastName + " → " + item.firstName + " " + item.lastName
     }
 }
 
 struct DetailView: View {
-    let item: Item
+    let item: FriendItem
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {

@@ -171,4 +171,49 @@ struct SquareUpClient {
         }
         return false
     }
+
+    func searchUsernames(query: String) async throws -> [String] {
+        let (data, response) = try await self.GET(endpoint: "/api/search/usernames", parameters: ["q": query])
+        guard let statusCode = (response as? HTTPURLResponse)?.statusCode, statusCode == 200 else {
+            throw URLError(.badServerResponse)
+        }
+        let json = try JSONSerialization.jsonObject(with: data, options: [])
+        if let arr = json as? [String] {
+            return arr
+        } else if let dict = json as? [String: Any], let arr = dict["results"] as? [String] {
+            return arr
+        } else {
+            return []
+        }
+    }
+
+    func addFriend(username: String) async throws -> Bool {
+        let (data, response) = try await self.POST(endpoint: "/api/friends/add", body: ["username": username])
+        guard let statusCode = (response as? HTTPURLResponse)?.statusCode else {
+            throw URLError(.badServerResponse)
+        }
+        if statusCode == 200 || statusCode == 201 {
+            return true
+        }
+        // Some APIs send { success: true } with 200
+        if let dict = try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any], let ok = dict["success"] as? Bool {
+            return ok
+        }
+        return false
+    }
+
+    func fetchFriends() async throws -> [String] {
+        let (data, response) = try await self.GET(endpoint: "/api/friends")
+        guard let statusCode = (response as? HTTPURLResponse)?.statusCode, statusCode == 200 else {
+            throw URLError(.badServerResponse)
+        }
+        let json = try JSONSerialization.jsonObject(with: data, options: [])
+        if let arr = json as? [String] {
+            return arr
+        } else if let dict = json as? [String: Any], let arr = dict["friends"] as? [String] {
+            return arr
+        } else {
+            return []
+        }
+    }
 }
