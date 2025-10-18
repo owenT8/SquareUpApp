@@ -173,7 +173,7 @@ struct SquareUpClient {
     }
 
     func searchUsernames(query: String) async throws -> [String] {
-        let (data, response) = try await self.GET(endpoint: "/api/search/usernames", parameters: ["q": query])
+        let (data, response) = try await self.GET(endpoint: "/api/search-usernames", parameters: ["prefix": query])
         guard let statusCode = (response as? HTTPURLResponse)?.statusCode, statusCode == 200 else {
             throw URLError(.badServerResponse)
         }
@@ -188,7 +188,7 @@ struct SquareUpClient {
     }
 
     func addFriend(username: String) async throws -> Bool {
-        let (data, response) = try await self.POST(endpoint: "/api/friends/add", body: ["username": username])
+        let (data, response) = try await self.POST(endpoint: "/api/add-friend", body: ["username": username])
         guard let statusCode = (response as? HTTPURLResponse)?.statusCode else {
             throw URLError(.badServerResponse)
         }
@@ -203,7 +203,7 @@ struct SquareUpClient {
     }
 
     func fetchFriends() async throws -> [String] {
-        let (data, response) = try await self.GET(endpoint: "/api/friends")
+        let (data, response) = try await self.GET(endpoint: "/api/get-friends")
         guard let statusCode = (response as? HTTPURLResponse)?.statusCode, statusCode == 200 else {
             throw URLError(.badServerResponse)
         }
