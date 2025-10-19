@@ -172,23 +172,23 @@ struct SquareUpClient {
         return false
     }
 
-    func searchUsernames(query: String) async throws -> [String] {
+    func searchUsernames(query: String) async throws -> [Friend] {
         let (data, response) = try await self.GET(endpoint: "/api/search-usernames", parameters: ["prefix": query])
         guard let statusCode = (response as? HTTPURLResponse)?.statusCode, statusCode == 200 else {
             throw URLError(.badServerResponse)
         }
         let json = try JSONSerialization.jsonObject(with: data, options: [])
-        if let arr = json as? [String] {
-            return arr
-        } else if let dict = json as? [String: Any], let arr = dict["results"] as? [String] {
-            return arr
+        print(json)
+        if let dict = json as? [String: Any], let friendsArr = dict["usernames"] as? [[String: Any]] {
+            let friends = friendsArr.compactMap { Friend(dict: $0) }
+            return friends
         } else {
             return []
         }
     }
 
     func addFriend(username: String) async throws -> Bool {
-        let (data, response) = try await self.POST(endpoint: "/api/add-friend", body: ["username": username])
+        let (data, response) = try await self.POST(endpoint: "/api/add-friend", body: ["friend_id": username])
         guard let statusCode = (response as? HTTPURLResponse)?.statusCode else {
             throw URLError(.badServerResponse)
         }
@@ -202,18 +202,19 @@ struct SquareUpClient {
         return false
     }
 
-    func fetchFriends() async throws -> [String] {
+    func fetchFriends() async throws -> [Friend] {
         let (data, response) = try await self.GET(endpoint: "/api/get-friends")
         guard let statusCode = (response as? HTTPURLResponse)?.statusCode, statusCode == 200 else {
             throw URLError(.badServerResponse)
         }
         let json = try JSONSerialization.jsonObject(with: data, options: [])
-        if let arr = json as? [String] {
-            return arr
-        } else if let dict = json as? [String: Any], let arr = dict["friends"] as? [String] {
-            return arr
+        // Expect json to be [String: Any] with a key "friends" mapping to [[String: Any]]
+        if let dict = json as? [String: Any], let friendsArr = dict["friends"] as? [[String: Any]] {
+            let friends = friendsArr.compactMap { Friend(dict: $0) }
+            return friends
         } else {
             return []
         }
     }
 }
+

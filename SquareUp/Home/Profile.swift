@@ -23,26 +23,16 @@ struct Item: Identifiable {
     }
 }
 
-let sampleItems: [Item] = [
-    Item(firstName: "Emily", lastName: "Clark"),
-    Item(firstName: "Michael", lastName: "Brown"),
-    Item(firstName: "Sophia", lastName: "Davis"),
-    Item(firstName: "James", lastName: "Wilson"),
-    Item(firstName: "Olivia", lastName: "Martinez"),
-    Item(firstName: "Liam", lastName: "Taylor"),
-    Item(firstName: "Ava", lastName: "Anderson"),
-]
-
 class ProfileViewModel: ObservableObject {
     @Published var items: [String: Any] = [:]
     @Published var isLoading: Bool = false
     @Published var searchQuery: String = ""
-    @Published var searchResults: [String] = []
+    @Published var searchResults: [Friend] = []
     @Published var searching: Bool = false
     @Published var addFriendLoading: Bool = false
     @Published var username: String = ""
     @Published var email: String = ""
-    @Published var friends: [String] = []
+    @Published var friends: [Friend] = []
     private var searchTask: Task<Void, Never>? = nil
 
     init() {
@@ -59,7 +49,7 @@ class ProfileViewModel: ObservableObject {
     func fetchData() {
         isLoading = true
         // Simulate network delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+        DispatchQueue.main.asyncAfter(deadline: .now()) {
             Task {
                 do {
                     let (_, data) = try await SquareUpClient.shared.verifyToken()
@@ -141,10 +131,9 @@ class ProfileViewModel: ObservableObject {
         do {
             let ok = try await SquareUpClient.shared.addFriend(username: username)
             if ok {
-                appState.successMessage = "Friend request sent to \(username)"
-                appState.showSuccessToast = true
+                fetchFriends()
             } else {
-                appState.errorMessage = "Could not add \(username). Please try again."
+                appState.errorMessage = "Could not add user as friend. Please try again."
                 appState.showErrorToast = true
             }
         } catch {
@@ -159,134 +148,117 @@ struct Profile: View {
     @State private var showFriendsSheet: Bool = false
 
     @EnvironmentObject var appState: AppState
+
     var body: some View {
-        ZStack {
-            VStack {
-                // Profile Avatar
-                Image(systemName: "person.crop.circle.fill")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 90, height: 90)
-                    .foregroundColor(.accentColor)
-                    .background(Circle().fill(Color(.systemBackground)).shadow(radius: 8))
-                    .padding(.top, 32)
+        NavigationStack {
+            ZStack {
+                VStack {
+                    // Profile Avatar
+                    Image(systemName: "person.crop.circle.fill")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 90, height: 90)
+                        .foregroundColor(Color("PrimaryColor"))
+                        .background(Circle().fill(Color(.systemBackground)).shadow(radius: 8))
+                        .padding(.top, 32)
 
-                // Username
-                Text(profileViewModel.username.isEmpty ? "Username" : profileViewModel.username)
-                    .font(.title2.bold())
-                    .padding(.top, 8)
-                
-                // Email
-                Text(profileViewModel.email.isEmpty ? "email@example.com" : profileViewModel.email)
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                
-                // New Top Friends Section
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Top Friends")
-                        .font(.headline)
-                        .padding(.horizontal)
-                    
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 16) {
-                            ForEach(sampleItems.prefix(5)) { friend in
-                                VStack(spacing: 6) {
-                                    Circle()
-                                        .fill(Color.accentColor.opacity(0.2))
-                                        .frame(width: 56, height: 56)
-                                        .overlay(
-                                            Text(friend.initials)
-                                                .font(.title3.bold())
-                                                .foregroundColor(.accentColor)
-                                        )
-                                    Text(friend.fullName)
-                                        .font(.caption)
-                                        .foregroundColor(.primary)
-                                        .lineLimit(1)
-                                        .frame(width: 70)
+                    // Username
+                    Text(profileViewModel.username.isEmpty ? "Username" : profileViewModel.username)
+                        .font(.title2.bold())
+                        .padding(.top, 8)
+
+                    // Email
+                    Text(profileViewModel.email.isEmpty ? "email@example.com" : profileViewModel.email)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+
+                    // My Friends Section
+                    Button {
+                        showFriendsSheet = true
+                    } label: {
+                        HStack(spacing: 12) {
+                            Text("My Friends")
+                                .font(.headline)
+                                .foregroundColor(.primary)
+
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack(spacing: 8) {
+                                    let displayedFriends = profileViewModel.friends.prefix(5)
+                                    ForEach(displayedFriends, id: \.id) { friend in
+                                        ZStack {
+                                            Circle()
+                                                .fill(
+                                                    LinearGradient(
+                                                        colors: [
+                                                            Color("PrimaryColor").opacity(0.9),
+                                                            Color("PrimaryColor").opacity(0.6)
+                                                        ],
+                                                        startPoint: .topLeading,
+                                                        endPoint: .bottomTrailing
+                                                    )
+                                                )
+                                                .frame(width: 32, height: 32)
+                                                .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+
+                                            Text(friend.firstName.prefix(1).uppercased())
+                                                .font(.system(size: 20, weight: .semibold))
+                                                .foregroundColor(.white)
+                                        }
+                                    }
+
+                                    if profileViewModel.friends.count > 5 {
+                                        Text("+\(profileViewModel.friends.count - 5) more")
+                                            .font(.subheadline)
+                                            .foregroundColor(.secondary)
+                                    }
                                 }
-                                .accessibilityElement(children: .combine)
-                                .accessibilityLabel(friend.fullName)
+                                .padding(.vertical, 5)
                             }
                         }
                         .padding(.horizontal)
-                        .padding(.bottom, 12)
+                        .padding(.vertical, 8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color(.secondarySystemBackground))
+                        )
                     }
-                }
-                .padding(.top, 20)
-                .padding(.horizontal, 30)
-                
-                // My Friends Section
-                Button {
-                    showFriendsSheet = true
-                } label: {
-                    HStack(spacing: 12) {
-                        Text("My Friends")
-                            .font(.headline)
-                            .foregroundColor(.primary)
-                        
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 8) {
-                                let displayedFriends = profileViewModel.friends.prefix(5)
-                                ForEach(Array(displayedFriends), id: \.self) { friend in
-                                    Circle()
-                                        .fill(Color.accentColor.opacity(0.2))
-                                        .frame(width: 32, height: 32)
-                                        .overlay(
-                                            Text(friend.prefix(1).uppercased())
-                                                .font(.headline)
-                                                .foregroundColor(.accentColor)
-                                        )
-                                        .accessibilityLabel(friend)
-                                }
-                                if profileViewModel.friends.count > 5 {
-                                    Text("+\(profileViewModel.friends.count - 5) more")
-                                        .font(.subheadline)
-                                        .foregroundColor(.secondary)
-                                }
-                            }
-                            .padding(.vertical, 5)
-                        }
-                    }
-                    .padding(.horizontal)
-                    .padding(.vertical, 8)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12)
-                            .fill(Color(.secondarySystemBackground))
-                    )
-                }
-                .buttonStyle(PlainButtonStyle())
-                .padding(.top, 12)
-                .padding(.bottom, 20)
-                .padding(.horizontal, 30)
+                    .buttonStyle(PlainButtonStyle())
+                    .padding(.top, 12)
+                    .padding(.bottom, 20)
+                    .padding(.horizontal, 30)
 
-                ScrollView {
-                    VStack(spacing: 12) {
-                        Spacer(minLength: 40)
-                        Button("Logout") {
+                    Spacer()
+                }
+                .sheet(isPresented: $showFriendsSheet) {
+                    FriendsListSheet(vm: profileViewModel)
+                        .environmentObject(appState)
+                }
+
+                if profileViewModel.isLoading || profileViewModel.addFriendLoading {
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle(tint: .gray))
+                        .scaleEffect(1.5)
+                }
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        Button(role: .destructive) {
                             TokenManager.shared.clearTokens()
                             appState.currentScreenGroup = .login
                             appState.isLoggedIn = false
+                        } label: {
+                            Label("Logout", systemImage: "rectangle.portrait.and.arrow.right")
                         }
-                        .buttonStyle(.bordered)
-                        .foregroundColor(.red)
-                        .padding(.vertical)
+                    } label: {
+                        Image(systemName: "gearshape.fill")
+                            .imageScale(.large)
+                            .foregroundColor(.primary)
                     }
                 }
-                .refreshable { profileViewModel.refresh() }
             }
-            .sheet(isPresented: $showFriendsSheet) {
-                FriendsListSheet(vm: profileViewModel)
-                    .environmentObject(appState)
-            }
-            
-            if profileViewModel.isLoading || profileViewModel.addFriendLoading {
-                Color.black.opacity(0.3)
-                    .edgesIgnoringSafeArea(.all)
-                ProgressView()
-                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                    .scaleEffect(1.5)
-            }
+            .refreshable { profileViewModel.refresh() }
         }
     }
 }
@@ -307,8 +279,45 @@ struct FriendsListSheet: View {
                     Spacer()
                 } else {
                     List(vm.friends, id: \.self) { friend in
-                        Text(friend)
+                        HStack {
+                            ZStack {
+                                Circle()
+                                    .fill(
+                                        LinearGradient(
+                                            colors: [
+                                                Color("PrimaryColor").opacity(0.9),
+                                                Color("PrimaryColor").opacity(0.6)
+                                            ],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                    )
+                                    .frame(width: 56, height: 56)
+                                    .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+
+                                Text(friend.firstName.prefix(1).uppercased() + friend.lastName.prefix(1).uppercased())
+                                    .font(.system(size: 20, weight: .semibold))
+                                    .foregroundColor(.white)
+                            }
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(friend.name)
+                                    .font(.headline)
+                                    .foregroundColor(.primary)
+                                Text("@\(friend.username)")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                        }
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+                        .padding()
+                        .background(
+                            RoundedRectangle(cornerRadius: 14)
+                                .fill(Color(.secondarySystemBackground))
+                        )
                     }
+                    .listRowSeparator(.hidden)
                     .listStyle(.plain)
                 }
                 
@@ -319,7 +328,7 @@ struct FriendsListSheet: View {
                         .font(.headline)
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(Color.accentColor)
+                        .background(Color("PrimaryColor"))
                         .foregroundColor(.white)
                         .cornerRadius(12)
                         .padding(.horizontal)
@@ -337,6 +346,7 @@ struct FriendsListSheet: View {
                     .environmentObject(appState)
             }
         }
+        .listRowSeparator(.hidden)
     }
 }
 
@@ -369,14 +379,14 @@ struct AddFriendSheet: View {
                         .padding(.top, 8)
                 }
 
-                List(vm.searchResults, id: \.self) { username in
+                List(vm.searchResults, id: \.id) { user in
                     Button {
-                        Task { await vm.addFriend(username: username, appState: appState); dismiss() }
+                        Task { await vm.addFriend(username: user.id, appState: appState); dismiss() }
                     } label: {
                         HStack {
                             Image(systemName: "person.badge.plus")
                                 .foregroundColor(.accentColor)
-                            Text(username)
+                            Text(user.name)
                         }
                     }
                 }
@@ -392,8 +402,6 @@ struct AddFriendSheet: View {
     }
 }
 
-struct Profile_Previews: PreviewProvider {
-    static var previews: some View {
-        Profile()
-    }
+#Preview {
+    Profile()
 }

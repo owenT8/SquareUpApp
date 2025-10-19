@@ -2,40 +2,88 @@
 //  Home.swift
 //  SquareUp
 //
-//  Created by Owen  Taylor on 9/6/25.
+//  Created by Owen Taylor on 9/6/25.
 //
+
 import SwiftUI
 
-enum HomePage {
-    case socail, balances, profile
-}
-
 struct Home: View {
-    @State private var selection: Int = 0
+    @State private var selection = 0
     
     var body: some View {
-        TabView(selection: $selection) {
-            Social()
-                .tag(0)
-                .tabItem {
-                    Label("Home", systemImage: "house.fill")
-                }
-            Friends()
-                .tag(1)
-                .tabItem {
-                    Label("Friends", systemImage: "person.2.fill")
-                }
-            Profile()
-                .tag(2)
-                .tabItem {
-                    Label("Profile", systemImage: "person.crop.circle.fill")
-                }
+        ZStack {
+            // MARK: - Swipeable Pages
+            TabView(selection: $selection) {
+                Social()
+                    .padding(.bottom, 80)
+                    .tag(0)
+                Friends()
+                    .padding(.bottom, 80)
+                    .tag(1)
+                Profile()
+                    .padding(.bottom, 80)
+                    .tag(2)
+            }
+            // Swipe horizontally between pages
+            .tabViewStyle(.page(indexDisplayMode: .never))
+            .animation(.spring(response: 0.4, dampingFraction: 0.8), value: selection)
+            .ignoresSafeArea(.keyboard, edges: .bottom)
+            
+            VStack {
+                Spacer()
+                FloatingTabBar(selection: $selection)
+            }
+            .padding(.bottom, 12)
         }
     }
 }
 
-struct SlideView_Previews: PreviewProvider {
-    static var previews: some View {
-        Home()
+struct FloatingTabBar: View {
+    @Binding var selection: Int
+    
+    var body: some View {
+        HStack(spacing: 40) {
+            TabBarButton(icon: "house.fill", index: 0, selection: $selection)
+            TabBarButton(icon: "person.2.fill", index: 1, selection: $selection)
+            TabBarButton(icon: "person.crop.circle.fill", index: 2, selection: $selection)
+        }
+        .padding(.horizontal, 24)
+        .padding(.vertical, 14)
+        .background(
+            RoundedRectangle(cornerRadius: 40, style: .continuous)
+                .fill(.ultraThinMaterial)
+                .shadow(color: .black.opacity(0.15), radius: 10, x: 0, y: 5)
+        )
+        .padding(.horizontal, 30)
+        .frame(maxWidth: .infinity)
+        .animation(.spring(response: 0.4, dampingFraction: 0.7), value: selection)
     }
+}
+
+struct TabBarButton: View {
+    let icon: String
+    let index: Int
+    @Binding var selection: Int
+    
+    var body: some View {
+        Button(action: {
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                selection = index
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            }
+        }) {
+            VStack(spacing: 4) {
+                Image(systemName: icon)
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundColor(selection == index ? Color("PrimaryColor") : .gray)
+                    .scaleEffect(selection == index ? 1.2 : 1.0)
+                    .shadow(color: selection == index ? .accentColor.opacity(0.3) : .clear, radius: 6)
+            }
+            .frame(maxWidth: .infinity)
+        }
+    }
+}
+
+#Preview {
+    Home()
 }
