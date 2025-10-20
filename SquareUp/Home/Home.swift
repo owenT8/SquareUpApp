@@ -17,7 +17,7 @@ struct Home: View {
                 Social()
                     .padding(.bottom, 80)
                     .tag(0)
-                Friends()
+                TransactionsView()
                     .padding(.bottom, 80)
                     .tag(1)
                 Profile()
@@ -44,7 +44,7 @@ struct FloatingTabBar: View {
     var body: some View {
         HStack(spacing: 40) {
             TabBarButton(icon: "house.fill", index: 0, selection: $selection)
-            TabBarButton(icon: "person.2.fill", index: 1, selection: $selection)
+            TabBarButton(icon: "dollarsign.circle.fill", index: 1, selection: $selection)
             TabBarButton(icon: "person.crop.circle.fill", index: 2, selection: $selection)
         }
         .padding(.horizontal, 24)

@@ -8,7 +8,7 @@ import Foundation
 
 struct SquareUpClient {
     static let shared = SquareUpClient()
-    let host: String = "http://square-up-server.vercel.app"
+    let host: String = "http://127.0.0.1:8000"
     
     func GET(endpoint: String, parameters: [String: Any]? = nil) async throws -> (Data, URLResponse) {
         var components = URLComponents(string: host)!
@@ -25,10 +25,10 @@ struct SquareUpClient {
             
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         if let token = TokenManager.shared.accessToken {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
-        
         // Async/await version
         let (data, response) = try await URLSession.shared.data(for: request)
         return (data, response)
@@ -50,6 +50,8 @@ struct SquareUpClient {
         }
         
         request.httpBody = try JSONSerialization.data(withJSONObject: body, options: [])
+        
+        print(body)
                 
         let (data, response) = try await URLSession.shared.data(for: request)
         
@@ -178,7 +180,6 @@ struct SquareUpClient {
             throw URLError(.badServerResponse)
         }
         let json = try JSONSerialization.jsonObject(with: data, options: [])
-        print(json)
         if let dict = json as? [String: Any], let friendsArr = dict["usernames"] as? [[String: Any]] {
             let friends = friendsArr.compactMap { Friend(dict: $0) }
             return friends
@@ -214,6 +215,28 @@ struct SquareUpClient {
             return friends
         } else {
             return []
+        }
+    }
+    
+    struct TransactionResponse: Codable {
+        let transactions: [Transaction]
+    }
+
+    func fetchTransactions() async throws -> [Transaction] {
+        let (data, response) = try await self.GET(endpoint: "/api/get-user-transactions")
+
+        // Ensure the HTTP response was successful
+        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+            throw URLError(.badServerResponse)
+        }
+        
+        do {
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .millisecondsSince1970
+            let result = try decoder.decode(TransactionResponse.self, from: data)
+            return result.transactions
+        } catch {
+            throw error
         }
     }
 }
