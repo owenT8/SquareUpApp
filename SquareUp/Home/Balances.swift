@@ -11,26 +11,34 @@ import SwiftUI
 class TransactionViewModel: ObservableObject {
     @Published var isLoading: Bool = false
     @Published var transactions: [Transaction] = []
+    
+    private var appState: AppState
 
-    // Remove the init - don't fetch automatically
-    init() {}
+    init(appState: AppState) {
+        self.appState = appState
+    }
 
     func fetchTransactions() async {
         isLoading = true
+        
         do {
             let data = try await SquareUpClient.shared.fetchTransactions()
-            print(data)
             transactions = data
         } catch {
-            print("Failed to fetch transactions: \(error)")
+            appState.showErrorToast = true
+            appState.errorMessage = "Failed to fetch transactions."
         }
         isLoading = false
     }
 }
 
 struct TransactionsView: View {
-    @StateObject var vm = TransactionViewModel()
+    @StateObject var vm: TransactionViewModel
     @EnvironmentObject var appState: AppState
+    
+    init(appState: AppState) {
+        _vm = StateObject(wrappedValue: TransactionViewModel(appState: appState))
+    }
     
     var body: some View {
         NavigationStack {
@@ -38,19 +46,20 @@ struct TransactionsView: View {
                 if vm.isLoading && vm.transactions.isEmpty {
                     ProgressView("Loading transactions...")
                 } else if !vm.transactions.isEmpty {
-                    List {
+                    ScrollView {
                         ForEach(vm.transactions) { transaction in
-                            TransactionCard(transaction: transaction)
+                            TransactionCard(transaction: transaction, vm: vm)
                                 .listRowInsets(EdgeInsets())
                                 .listRowSeparator(.hidden)
                                 .listRowBackground(Color.clear)
                         }
                     }
-                    .listStyle(.plain)
-                    .scrollContentBackground(.hidden)
                     .refreshable {
-                        await vm.fetchTransactions()
+                        await Task {
+                            await vm.fetchTransactions()
+                        }.value
                     }
+                    .frame(maxHeight: .infinity)
                 } else {
                     ContentUnavailableView(
                         "No Transactions",
@@ -62,7 +71,6 @@ struct TransactionsView: View {
             .navigationTitle("Groups")
         }
         .onAppear {
-            // Only fetch if we haven't already and not currently loading
             if vm.transactions.isEmpty && !vm.isLoading {
                 Task {
                     await vm.fetchTransactions()
@@ -74,8 +82,10 @@ struct TransactionsView: View {
 
 struct TransactionCard: View {
     let transaction: Transaction
+    @ObservedObject var vm: TransactionViewModel
     @State private var isExpanded = false
     @State private var showAddContribution = false
+    @State private var selectedContribution: Contribution? = nil
     
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -96,6 +106,17 @@ struct TransactionCard: View {
                             }
                         }
                     }
+                    // Net amount for current user
+                    if let userId = UserDefaults.standard.string(forKey: "profile_user_id"),
+                       let netAmount = transaction.netAmounts[userId] {
+                        HStack {
+                            Text("🧾 Your Balance:")
+                            Text(netAmount, format: .currency(code: "USD"))
+                                .foregroundColor(netAmount >= 0 ? .green : .red)
+                                .bold()
+                        }
+                        .padding(.bottom, 6)
+                    }
                 }
                 Spacer()
                 Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
@@ -112,18 +133,6 @@ struct TransactionCard: View {
             if isExpanded {
                 Divider()
                     .padding(.vertical, 6)
-                
-                // Net amount for current user
-                if let userId = UserDefaults.standard.string(forKey: "profile_user_id"),
-                   let netAmount = transaction.netAmounts[userId] {
-                    HStack {
-                        Text("🧾 Your Balance:")
-                        Text(netAmount, format: .currency(code: "USD"))
-                            .foregroundColor(netAmount >= 0 ? .green : .red)
-                            .bold()
-                    }
-                    .padding(.bottom, 6)
-                }
                 
                 // Contributions scroll view
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -143,6 +152,9 @@ struct TransactionCard: View {
                             .background(Color(.secondarySystemBackground))
                             .cornerRadius(10)
                             .shadow(radius: 1)
+                            .onTapGesture {
+                                selectedContribution = contrib
+                            }
                         }
                     }
                 }
@@ -162,7 +174,7 @@ struct TransactionCard: View {
                 }
                 .padding(.top, 10)
                 .sheet(isPresented: $showAddContribution) {
-                    AddContributionView(transaction: transaction)
+                    AddContributionView(transaction: transaction, vm: vm)
                 }
             }
         }
@@ -173,6 +185,137 @@ struct TransactionCard: View {
                 .shadow(color: .black.opacity(0.1), radius: 6, x: 0, y: 3)
         )
         .padding(.horizontal)
+        .sheet(item: $selectedContribution) { contribution in
+            ContributionDetailView(contribution: contribution, transaction: transaction)
+        }
+    }
+    
+    // Helper: Resolve user name
+    private func username(for id: String) -> String {
+        transaction.userDetails.first(where: { $0.userID == id })?.username ?? "User"
+    }
+}
+struct ContributionDetailView: View {
+    let contribution: Contribution
+    let transaction: Transaction
+    @Environment(\.dismiss) var dismiss
+    
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    // MARK: Header Section
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Paid by")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        
+                        HStack {
+                            Image(systemName: "person.circle.fill")
+                                .font(.title2)
+                                .foregroundColor(.blue)
+                            Text(username(for: contribution.senderId))
+                                .font(.title2)
+                                .bold()
+                        }
+                    }
+                    .padding()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color(.systemGray6))
+                    .cornerRadius(12)
+                    
+                    // MARK: Amount Section
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Total Amount")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        
+                        Text(contribution.totalAmount, format: .currency(code: "USD"))
+                            .font(.system(size: 36, weight: .bold))
+                            .foregroundColor(.primary)
+                    }
+                    .padding()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color(.systemGray6))
+                    .cornerRadius(12)
+                    
+                    // MARK: Description Section
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Description")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        
+                        Text(contribution.description)
+                            .font(.body)
+                    }
+                    .padding()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color(.systemGray6))
+                    .cornerRadius(12)
+                    
+                    // MARK: Split Details
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Split Between")
+                            .font(.headline)
+                            .padding(.bottom, 4)
+                        
+                        ForEach(contribution.receiverAmounts.keys.sorted(), id: \.self) { receiverId in
+                            if let amount = contribution.receiverAmounts[receiverId] {
+                                HStack {
+                                    Image(systemName: "person.fill")
+                                        .foregroundColor(.blue)
+                                    
+                                    Text(username(for: receiverId))
+                                        .font(.body)
+                                    
+                                    Spacer()
+                                    
+                                    Text(amount, format: .currency(code: "USD"))
+                                        .font(.body)
+                                        .bold()
+                                }
+                                .padding()
+                                .background(Color(.systemGray6))
+                                .cornerRadius(10)
+                            }
+                        }
+                    }
+                    .padding()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                    )
+                    
+                    // MARK: Date Section
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Date")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        
+                        Text(contribution.createdAt, style: .date)
+                            .font(.body)
+                        Text(contribution.createdAt, style: .time)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .padding()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color(.systemGray6))
+                    .cornerRadius(12)
+                }
+                .padding()
+            }
+            .navigationTitle("Contribution Details")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+        }
     }
     
     // Helper: Resolve user name
@@ -181,13 +324,15 @@ struct TransactionCard: View {
     }
 }
 
+
 struct AddContributionView: View {
     let transaction: Transaction
+    @ObservedObject var vm: TransactionViewModel
     @Environment(\.dismiss) private var dismiss
     
     @State private var description = ""
-    @State private var totalAmount = ""
-    @State private var receiverAmounts: [String: String] = [:]
+    @State private var totalAmount: Double = 0
+    @State private var receiverAmounts: [String: Double] = [:]
     @State private var isSubmitting = false
     @State private var errorMessage: String?
     
@@ -211,15 +356,8 @@ struct AddContributionView: View {
                     TextField("Description", text: $description)
                         .autocapitalization(.sentences)
                     
-                    TextField("Total Amount", text: $totalAmount)
+                    TextField("Total", value: $totalAmount, format: .currency(code: Locale.current.currency?.identifier ?? "USD"))
                         .keyboardType(.decimalPad)
-                        .onChange(of: totalAmount) { _, newValue in
-                            // Filter to only allow numbers and decimal point
-                            let filtered = newValue.filter { "0123456789.".contains($0) }
-                            if filtered != newValue {
-                                totalAmount = filtered
-                            }
-                        }
                 }
                 
                 Section {
@@ -228,28 +366,39 @@ struct AddContributionView: View {
                             Text(receiver.firstName)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                             
-                            TextField("Amount", text: Binding(
-                                get: { receiverAmounts[receiver.userID] ?? "" },
+                            TextField("Amount", value: Binding(
+                                get: { receiverAmounts[receiver.userID] ?? 0 },
                                 set: { receiverAmounts[receiver.userID] = $0 }
-                            ))
+                            ),
+                            format: .currency(code: Locale.current.currency?.identifier ?? "USD"))
                             .keyboardType(.decimalPad)
                             .multilineTextAlignment(.trailing)
                             .frame(width: 100)
-                            .onChange(of: receiverAmounts[receiver.userID] ?? "") { _, newValue in
-                                // Filter to only allow numbers and decimal point
-                                let filtered = newValue.filter { "0123456789.".contains($0) }
-                                if filtered != newValue {
-                                    receiverAmounts[receiver.userID] = filtered
-                                }
-                            }
+                            .disabled(totalAmount == 0)
                         }
                     }
                 } header: {
-                    Text("Receiver Amounts")
+                    Text("Covered Amounts")
                 } footer: {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Total allocated: $\(computedTotal, specifier: "%.2f")")
-                        if let total = Double(totalAmount), computedTotal > total {
+                        HStack {
+                            Text("Total allocated: $\(computedTotal, specifier: "%.2f")")
+                            Spacer()
+                            Button {
+                                let dividedAmount = floor((totalAmount / Double(availableReceivers.count + 1)) * 100) / 100
+                                for receiver in availableReceivers {
+                                    receiverAmounts[receiver.userID] = dividedAmount
+                                }
+                            } label: {
+                                HStack {
+                                    Text("Split Evenly")
+                                        .foregroundColor(Color("PrimaryColor"))
+                                    Text("⚖️")
+                                }
+                            }
+                            .disabled(totalAmount == 0)
+                        }
+                        if computedTotal > totalAmount {
                             Text("⚠️ Allocated amount exceeds total")
                                 .foregroundColor(.red)
                         }
@@ -297,11 +446,11 @@ struct AddContributionView: View {
         guard !description.trimmingCharacters(in: .whitespaces).isEmpty else { return false }
         
         // Check total amount is valid
-        guard let total = Double(totalAmount), total > 0 else { return false }
+        if (totalAmount <= 0) { return false }
         
         // Check at least one receiver has an amount
         let validReceivers = receiverAmounts.filter { key, value in
-            guard let amount = Double(value), amount > 0 else { return false }
+            if value <= 0 { return false }
             return true
         }
         guard !validReceivers.isEmpty else { return false }
@@ -312,15 +461,15 @@ struct AddContributionView: View {
     func submitContribution() async {
         errorMessage = nil
         
-        guard let total = Double(totalAmount), total > 0 else {
+        if (totalAmount <= 0) {
             errorMessage = "Please enter a valid total amount"
             return
         }
         
         // Build receiver amounts dictionary with only non-zero values
         var receiverAmountsDict: [String: Double] = [:]
-        for (userId, amountStr) in receiverAmounts {
-            if let amount = Double(amountStr), amount > 0 {
+        for (userId, amount) in receiverAmounts {
+            if amount > 0 {
                 receiverAmountsDict[userId] = amount
             }
         }
@@ -336,7 +485,7 @@ struct AddContributionView: View {
         let body: [String: Any] = [
             "transaction_id": transaction.id,
             "description": description.trimmingCharacters(in: .whitespaces),
-            "total_amount": total,
+            "total_amount": totalAmount,
             "receiver_amounts": receiverAmountsDict
         ]
         
@@ -345,10 +494,10 @@ struct AddContributionView: View {
                 endpoint: "/api/add-contribution",
                 body: body
             )
+            await vm.fetchTransactions()
             dismiss()
         } catch {
             errorMessage = "Failed to add contribution: \(error.localizedDescription)"
-            print("❌ Failed to add contribution:", error)
         }
     }
 }

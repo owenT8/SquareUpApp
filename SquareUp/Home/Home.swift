@@ -9,6 +9,7 @@ import SwiftUI
 
 struct Home: View {
     @State private var selection = 0
+    @EnvironmentObject var appState: AppState
     
     var body: some View {
         ZStack {
@@ -17,7 +18,7 @@ struct Home: View {
                 Social()
                     .padding(.bottom, 80)
                     .tag(0)
-                TransactionsView()
+                TransactionsView(appState: appState)
                     .padding(.bottom, 80)
                     .tag(1)
                 Profile()
