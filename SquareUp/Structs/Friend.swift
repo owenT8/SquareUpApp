@@ -11,6 +11,14 @@ struct Friend: Identifiable, Codable, Hashable {
     let firstName: String
     let lastName: String
     let name: String
+    
+    enum CodingKeys: String, CodingKey {
+        case id = "user_id"
+        case username
+        case firstName = "first_name"
+        case lastName = "last_name"
+        case name
+    }
 
     init(id: String, username: String, firstName: String, lastName: String, name: String) {
         self.id = id

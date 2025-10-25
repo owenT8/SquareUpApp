@@ -11,6 +11,7 @@ import SwiftUI
 class TransactionViewModel: ObservableObject {
     @Published var isLoading: Bool = false
     @Published var transactions: [Transaction] = []
+    @Published var friends: [Friend] = []
     
     private var appState: AppState
 
@@ -22,8 +23,9 @@ class TransactionViewModel: ObservableObject {
         isLoading = true
         
         do {
-            let data = try await SquareUpClient.shared.fetchTransactions()
-            transactions = data
+            let (transactions_data, user_details_data) = try await SquareUpClient.shared.fetchTransactions()
+            transactions = transactions_data
+            friends = user_details_data
         } catch {
             appState.showErrorToast = true
             appState.errorMessage = "Failed to fetch transactions."
@@ -166,7 +168,7 @@ struct TransactionCard: View {
                 } label: {
                     Label("Add Contribution", systemImage: "plus.circle.fill")
                         .font(.headline)
-                        .foregroundColor(.blue)
+                        .foregroundColor(Color("PrimaryColor"))
                         .frame(maxWidth: .infinity)
                         .padding()
                         .background(Color(.systemGray6))
@@ -186,16 +188,21 @@ struct TransactionCard: View {
         )
         .padding(.horizontal)
         .sheet(item: $selectedContribution) { contribution in
-            ContributionDetailView(contribution: contribution, transaction: transaction)
+            ContributionDetailView(vm: vm, contribution: contribution, transaction: transaction)
         }
     }
     
     // Helper: Resolve user name
     private func username(for id: String) -> String {
-        transaction.userDetails.first(where: { $0.userID == id })?.username ?? "User"
+        if let friend = vm.friends.first(where: { $0.id == id }) {
+            return friend.username
+        } else {
+            return "User"
+        }
     }
 }
 struct ContributionDetailView: View {
+    @ObservedObject var vm: TransactionViewModel
     let contribution: Contribution
     let transaction: Transaction
     @Environment(\.dismiss) var dismiss
@@ -213,7 +220,7 @@ struct ContributionDetailView: View {
                         HStack {
                             Image(systemName: "person.circle.fill")
                                 .font(.title2)
-                                .foregroundColor(.blue)
+                                .foregroundColor(Color("PrimaryColor"))
                             Text(username(for: contribution.senderId))
                                 .font(.title2)
                                 .bold()
@@ -263,7 +270,7 @@ struct ContributionDetailView: View {
                             if let amount = contribution.receiverAmounts[receiverId] {
                                 HStack {
                                     Image(systemName: "person.fill")
-                                        .foregroundColor(.blue)
+                                        .foregroundColor(Color("PrimaryColor"))
                                     
                                     Text(username(for: receiverId))
                                         .font(.body)
@@ -313,6 +320,7 @@ struct ContributionDetailView: View {
                     Button("Done") {
                         dismiss()
                     }
+                    .foregroundColor(Color("PrimaryColor"))
                 }
             }
         }
@@ -320,7 +328,7 @@ struct ContributionDetailView: View {
     
     // Helper: Resolve user name
     private func username(for id: String) -> String {
-        transaction.userDetails.first(where: { $0.userID == id })?.username ?? "User"
+        vm.friends.first(where: { $0.id == id })?.username ?? "User"
     }
 }
 
@@ -341,8 +349,8 @@ struct AddContributionView: View {
     }
     
     // Get available receivers (all users except current user)
-    private var availableReceivers: [UserDetail] {
-        transaction.userDetails.filter { $0.userID != currentUserId }
+    private var availableReceivers: [Friend] {
+        vm.friends.filter { $0.id != currentUserId && transaction.userIds.contains($0.id) }
     }
     
     private var computedTotal: Double {
@@ -367,8 +375,8 @@ struct AddContributionView: View {
                                 .frame(maxWidth: .infinity, alignment: .leading)
                             
                             TextField("Amount", value: Binding(
-                                get: { receiverAmounts[receiver.userID] ?? 0 },
-                                set: { receiverAmounts[receiver.userID] = $0 }
+                                get: { receiverAmounts[receiver.id] ?? 0 },
+                                set: { receiverAmounts[receiver.id] = $0 }
                             ),
                             format: .currency(code: Locale.current.currency?.identifier ?? "USD"))
                             .keyboardType(.decimalPad)
@@ -387,7 +395,7 @@ struct AddContributionView: View {
                             Button {
                                 let dividedAmount = floor((totalAmount / Double(availableReceivers.count + 1)) * 100) / 100
                                 for receiver in availableReceivers {
-                                    receiverAmounts[receiver.userID] = dividedAmount
+                                    receiverAmounts[receiver.id] = dividedAmount
                                 }
                             } label: {
                                 HStack {
@@ -435,7 +443,7 @@ struct AddContributionView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Cancel") { dismiss() }
+                    Button("Cancel") { dismiss() }.foregroundColor(.red)
                 }
             }
         }
@@ -502,12 +510,3 @@ struct AddContributionView: View {
     }
 }
 
-struct Balances: View {
-    @EnvironmentObject var appState: AppState
-
-    var body: some View {
-        NavigationStack {
-           
-        }
-    }
-}

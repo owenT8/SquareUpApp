@@ -16,7 +16,6 @@ struct Transaction: Codable, Identifiable {
     let debts: [String: [String: Double]]
     let createdAt: Date
     let createdBy: String?
-    let userDetails: [UserDetail]
 
     enum CodingKeys: String, CodingKey {
         case id = "transaction_id"
@@ -27,7 +26,6 @@ struct Transaction: Codable, Identifiable {
         case debts
         case createdAt = "created_at"
         case createdBy = "created_by"
-        case userDetails = "user_details"
     }
 
     init(from decoder: Decoder) throws {
@@ -62,18 +60,6 @@ struct Transaction: Codable, Identifiable {
         } else {
             throw DecodingError.dataCorruptedError(forKey: .createdAt, in: container, debugDescription: "Could not decode date")
         }
-
-        var userDetailsArray: [UserDetail] = []
-        if var detailsContainer = try? container.nestedUnkeyedContainer(forKey: .userDetails) {
-            while !detailsContainer.isAtEnd {
-                if let userDetail = try? detailsContainer.decode(UserDetail.self) {
-                    userDetailsArray.append(userDetail)
-                } else {
-                    _ = try? detailsContainer.decode(String.self) // skip string
-                }
-            }
-        }
-        userDetails = userDetailsArray
     }
 }
 
@@ -124,23 +110,6 @@ struct Contribution: Codable, Identifiable {
         }
         
         self.id = "\(senderId)-\(createdAt.timeIntervalSince1970)-\(description.hashValue)"
-    }
-}
-
-struct UserDetail: Codable, Identifiable {
-    var id: String { userID }
-    let userID: String
-    let username: String
-    let firstName: String
-    let lastName: String
-    let name: String
-
-    enum CodingKeys: String, CodingKey {
-        case userID = "user_id"
-        case username
-        case firstName = "first_name"
-        case lastName = "last_name"
-        case name
     }
 }
 

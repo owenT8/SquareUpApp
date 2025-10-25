@@ -6,9 +6,19 @@
 //
 import Foundation
 
+struct TransactionsAndUserResponse: Codable {
+    let transactions: [Transaction]
+    let userDetails: [Friend]
+    
+    enum CodingKeys: String, CodingKey {
+        case transactions
+        case userDetails = "user_details"
+    }
+}
+
 struct SquareUpClient {
     static let shared = SquareUpClient()
-    let host: String = "https://square-up-server.vercel.app"
+    let host: String = "http://localhost:8000/"
     
     func GET(endpoint: String, parameters: [String: Any]? = nil) async throws -> (Data, URLResponse) {
         var components = URLComponents(string: host)!
@@ -189,7 +199,7 @@ struct SquareUpClient {
     }
 
     func addFriend(username: String) async throws -> Bool {
-        let (data, response) = try await self.POST(endpoint: "/api/add-friend", body: ["friend_id": username])
+        let (data, response) = try await self.POST(endpoint: "/api/add-friend-request", body: ["friend_id": username])
         guard let statusCode = (response as? HTTPURLResponse)?.statusCode else {
             throw URLError(.badServerResponse)
         }
@@ -202,6 +212,22 @@ struct SquareUpClient {
         }
         return false
     }
+    
+    func removeFriend(username: String) async throws -> Bool {
+        let (data, response) = try await self.POST(endpoint: "/api/remove-friend", body: ["friend_id": username])
+        guard let statusCode = (response as? HTTPURLResponse)?.statusCode else {
+            throw URLError(.badServerResponse)
+        }
+        if statusCode == 200 || statusCode == 201 {
+            return true
+        }
+        // Some APIs send { success: true } with 200
+        if let dict = try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any], let ok = dict["success"] as? Bool {
+            return ok
+        }
+        return false
+    }
+    
 
     func fetchFriends() async throws -> [Friend] {
         let (data, response) = try await self.GET(endpoint: "/api/get-friends")
@@ -218,26 +244,62 @@ struct SquareUpClient {
         }
     }
     
-    struct TransactionResponse: Codable {
-        let transactions: [Transaction]
-    }
-
-    func fetchTransactions() async throws -> [Transaction] {
+    func fetchTransactions() async throws -> (transactions: [Transaction], userDetails: [Friend]) {
         let (data, response) = try await self.GET(endpoint: "/api/get-user-transactions")
 
         // Ensure the HTTP response was successful
         guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
             throw URLError(.badServerResponse)
         }
-        
+                
         do {
             let decoder = JSONDecoder()
             decoder.dateDecodingStrategy = .millisecondsSince1970
-            let result = try decoder.decode(TransactionResponse.self, from: data)
-            return result.transactions
+            let result = try decoder.decode(TransactionsAndUserResponse.self, from: data)
+            return (transactions: result.transactions, userDetails: result.userDetails)
         } catch {
             throw error
         }
     }
+    
+    func fetchFriendRequests() async throws -> (incoming: [Friend], outgoing: [Friend]) {
+        let (data, response) = try await self.GET(endpoint: "/api/get-friend-requests")
+        guard let statusCode = (response as? HTTPURLResponse)?.statusCode, statusCode == 200 else {
+            throw URLError(.badServerResponse)
+        }
+        let json = try JSONSerialization.jsonObject(with: data, options: [])
+        if let dict = json as? [String: Any] {
+            let incomingArr = dict["friend_requests"] as? [[String: Any]] ?? []
+            let outgoingArr = dict["outgoing_friend_requests"] as? [[String: Any]] ?? []
+            let incoming = incomingArr.compactMap { Friend(dict: $0) }
+            let outgoing = outgoingArr.compactMap { Friend(dict: $0) }
+            return (incoming: incoming, outgoing: outgoing)
+        } else {
+            return (incoming: [], outgoing: [])
+        }
+    }
+    
+    func acceptFriendRequest(forUserId userId: String) async throws -> Bool {
+        let (_, response) = try await self.POST(endpoint: "/api/accept-friend-request", body: ["friend_id": userId])
+        guard let statusCode = (response as? HTTPURLResponse)?.statusCode, statusCode == 200 else {
+            return false
+        }
+        return true
+    }
+    
+    func rejectFriendRequest(forUserId userId: String) async throws -> Bool {
+        let (_, response) = try await self.POST(endpoint: "/api/remove-friend-request", body: ["friend_id": userId])
+        guard let statusCode = (response as? HTTPURLResponse)?.statusCode, statusCode == 200 else {
+            return false
+        }
+        return true
+    }
+    
+    func removeOutgoingFriendRequest(forUserId userId: String) async throws -> Bool {
+        let (_, response) = try await self.POST(endpoint: "/api/remove-outgoing-friend-request", body: ["friend_id": userId])
+        guard let statusCode = (response as? HTTPURLResponse)?.statusCode, statusCode == 200 else {
+            return false
+        }
+        return true
+    }
 }
-
