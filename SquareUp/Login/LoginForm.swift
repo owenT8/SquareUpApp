@@ -96,6 +96,7 @@ struct LoginForm: View {
                                             }
                                             
                                         } catch {
+                                            isLoading = false
                                             showError(message: "Something went wrong. Please try again later.")
                                         }
                                     }

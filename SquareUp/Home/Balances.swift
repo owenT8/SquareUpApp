@@ -29,8 +29,6 @@ class TransactionViewModel: ObservableObject {
     }
 
     func fetchTransactions() async {
-        isLoading = true
-        
         do {
             let (transactions_data, user_details_data) = try await SquareUpClient.shared.fetchTransactions()
             let all_friends_data = try await SquareUpClient.shared.fetchFriends()
@@ -41,7 +39,6 @@ class TransactionViewModel: ObservableObject {
             appState.showErrorToast = true
             appState.errorMessage = "Failed to fetch transactions."
         }
-        isLoading = false
     }
 }
 
@@ -56,30 +53,38 @@ struct TransactionsView: View {
     
     var body: some View {
         NavigationStack {
-            Group {
-                if vm.isLoading && vm.transactions.isEmpty {
-                    ProgressView("Loading transactions...")
-                } else if !vm.transactions.isEmpty {
-                    ScrollView {
-                        ForEach(vm.transactions) { transaction in
-                            TransactionCard(transaction: transaction, vm: vm)
-                                .listRowInsets(EdgeInsets())
-                                .listRowSeparator(.hidden)
-                                .listRowBackground(Color.clear)
+            ZStack {
+                Color(Color("BackgroundColor")) // Or Color("YourColor")
+                    .ignoresSafeArea()
+                Group {
+                    if vm.isLoading && vm.transactions.isEmpty {
+                        ProgressView("Loading transactions...")
+                    } else if !vm.transactions.isEmpty {
+                        ScrollView {
+                            VStack(spacing: 10) {
+                                ForEach(vm.transactions) { transaction in
+                                    TransactionCard(transaction: transaction, vm: vm)
+                                        .listRowInsets(EdgeInsets())
+                                        .listRowSeparator(.hidden)
+                                        .listRowBackground(Color.clear)
+                                        .padding(.bottom, 14)
+                                }
+                            }
+                            .padding(.bottom, 100)
                         }
-                    }
-                    .refreshable {
-                        await Task {
+                        .refreshable {
                             await vm.fetchTransactions()
-                        }.value
+                        }
+                    } else {
+                        ContentUnavailableView(
+                            "No Transactions",
+                            systemImage: "tray",
+                            description: Text("Pull down to refresh")
+                        )
                     }
-                    .frame(maxHeight: .infinity)
-                } else {
-                    ContentUnavailableView(
-                        "No Transactions",
-                        systemImage: "tray",
-                        description: Text("Pull down to refresh")
-                    )
+                }
+                .sheet(isPresented: $showCreateTransaction) {
+                    CreateTransactionView(vm: vm)
                 }
             }
             .navigationTitle("Groups")
@@ -93,10 +98,8 @@ struct TransactionsView: View {
                     }
                 }
             }
-            .sheet(isPresented: $showCreateTransaction) {
-                CreateTransactionView(vm: vm)
-            }
         }
+        .scenePadding(.horizontal)
         .onAppear {
             if vm.transactions.isEmpty && !vm.isLoading {
                 Task {
@@ -106,6 +109,7 @@ struct TransactionsView: View {
         }
     }
 }
+
 
 struct CreateTransactionView: View {
     @ObservedObject var vm: TransactionViewModel
@@ -340,7 +344,6 @@ struct TransactionCard: View {
         .background(
             RoundedRectangle(cornerRadius: 16)
                 .fill(.ultraThinMaterial)
-                .shadow(color: .black.opacity(0.1), radius: 6, x: 0, y: 3)
         )
         .padding(.horizontal)
         .sheet(item: $selectedContribution) { contribution in

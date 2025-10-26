@@ -240,8 +240,8 @@ struct Profile: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                // Wrap content in ScrollView so refreshable works
-                // Profile Avatar
+                Color("BackgroundColor") 
+                    .ignoresSafeArea()
                 VStack {
                     VStack {
                         Image(systemName: "person.crop.circle.fill")

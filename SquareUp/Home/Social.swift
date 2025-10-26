@@ -23,7 +23,6 @@ class SocialFeedViewModel: ObservableObject {
     
     func fetchInitialContributions() async {
         isLoading = true
-        contributions = []
         hasMoreContent = true
         
         do {
@@ -37,6 +36,22 @@ class SocialFeedViewModel: ObservableObject {
         }
         
         isLoading = false
+    }
+    
+    func refreshContributions() async {
+        do {
+            let (newContributions, users) = try await SquareUpClient.shared.fetchSocialContributions(limit: pageSize)
+            contributions = newContributions
+            userDetails = users
+            hasMoreContent = newContributions.count == pageSize
+        } catch {
+            let nsError = error as NSError
+            guard nsError.domain != NSURLErrorDomain || nsError.code != NSURLErrorCancelled else {
+                return
+            }
+            appState.showErrorToast = true
+            appState.errorMessage = "Failed to load feed."
+        }
     }
     
     func loadMoreContributions() async {
@@ -91,39 +106,56 @@ struct SocialFeedView: View {
     
     var body: some View {
         NavigationStack {
-            Group {
+            ZStack {
+                Color("BackgroundColor")
+                    .ignoresSafeArea()
                 if vm.isLoading && vm.contributions.isEmpty {
                     ProgressView("Loading feed...")
-                } else                 if !vm.contributions.isEmpty {
-                    ScrollView {
-                        LazyVStack(spacing: 0) {
-                            ForEach(vm.contributions) { contribution in
-                                SocialContributionCard(contribution: contribution, vm: vm)
-                                    .padding(.bottom, 16)
-                                    .onAppear {
-                                        // Load more when we reach near the end
-                                        if contribution.id == vm.contributions.last?.id {
-                                            Task {
-                                                await vm.loadMoreContributions()
-                                            }
+                } else if !vm.contributions.isEmpty {
+                    List {
+                        ForEach(vm.contributions) { contribution in
+                            SocialContributionCard(contribution: contribution, vm: vm)
+                                .listRowInsets(EdgeInsets())
+                                .listRowSeparator(.hidden)
+                                .listRowBackground(Color.clear)
+                                .padding(.bottom, 16)
+                                .onAppear {
+                                    // Load more when we reach near the end
+                                    if contribution.id == vm.contributions.last?.id {
+                                        Task {
+                                            await vm.loadMoreContributions()
                                         }
                                     }
-                            }
-                            
-                            if vm.isLoadingMore {
-                                ProgressView()
-                                    .padding()
-                            } else if !vm.hasMoreContent && !vm.contributions.isEmpty {
+                                }
+                        }
+                        
+                        if vm.isLoadingMore {
+                            ProgressView()
+                                .padding()
+                                .listRowInsets(EdgeInsets())
+                                .listRowSeparator(.hidden)
+                                .listRowBackground(Color.clear)
+                        } else if !vm.hasMoreContent && !vm.contributions.isEmpty {
+                            HStack {
+                                Spacer()
                                 Text("You're all caught up! 🎉")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
-                                    .padding()
+                                Spacer()
                             }
+                            .padding()
+                            .listRowInsets(EdgeInsets())
+                            .listRowSeparator(.hidden)
+                            .listRowBackground(Color.clear)
                         }
-                        .padding(.top, 16)
                     }
+                    .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
                     .refreshable {
-                        await vm.fetchInitialContributions()
+                        await vm.refreshContributions()
+                    }
+                    .safeAreaInset(edge: .bottom) {
+                        Color.clear.frame(height: 80)
                     }
                 } else {
                     ContentUnavailableView(
@@ -135,6 +167,7 @@ struct SocialFeedView: View {
             }
             .navigationTitle("Activity")
         }
+        .scenePadding(.horizontal)
         .onAppear {
             if vm.contributions.isEmpty && !vm.isLoading {
                 Task {

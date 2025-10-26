@@ -18,7 +18,7 @@ struct TransactionsAndUserResponse: Codable {
 
 struct SquareUpClient {
     static let shared = SquareUpClient()
-    let host: String = "http://localhost:8000/"
+    let host: String = "http://square-up-server.vercel.app/"
     
     func GET(endpoint: String, parameters: [String: Any]? = nil) async throws -> (Data, URLResponse) {
         var components = URLComponents(string: host)!

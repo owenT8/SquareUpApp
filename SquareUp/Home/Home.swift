@@ -13,6 +13,9 @@ struct Home: View {
     
     var body: some View {
         ZStack {
+            Color("BackgroundColor")
+                .ignoresSafeArea()
+            
             TabView(selection: $selection) {
                 SocialFeedView(appState: appState)
                     .tag(0)
