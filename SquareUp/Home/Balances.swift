@@ -11,7 +11,16 @@ import SwiftUI
 class TransactionViewModel: ObservableObject {
     @Published var isLoading: Bool = false
     @Published var transactions: [Transaction] = []
-    @Published var friends: [Friend] = []
+    @Published var transactionFriends: [Friend] = []
+    @Published var allFriends: [Friend] = []
+    
+    @Published var myself: Friend = Friend(
+        id: UserDefaults.standard.string(forKey: "profile_user_id")!,
+        username: UserDefaults.standard.string(forKey: "profile_username")!,
+        firstName: UserDefaults.standard.string(forKey: "profile_first_name")!,
+        lastName: UserDefaults.standard.string(forKey: "profile_last_name")!,
+        name: UserDefaults.standard.string(forKey: "profile_full_name")!
+    )
     
     private var appState: AppState
 
@@ -24,8 +33,10 @@ class TransactionViewModel: ObservableObject {
         
         do {
             let (transactions_data, user_details_data) = try await SquareUpClient.shared.fetchTransactions()
+            let all_friends_data = try await SquareUpClient.shared.fetchFriends()
             transactions = transactions_data
-            friends = user_details_data
+            transactionFriends = user_details_data
+            allFriends = all_friends_data
         } catch {
             appState.showErrorToast = true
             appState.errorMessage = "Failed to fetch transactions."
@@ -37,6 +48,7 @@ class TransactionViewModel: ObservableObject {
 struct TransactionsView: View {
     @StateObject var vm: TransactionViewModel
     @EnvironmentObject var appState: AppState
+    @State private var showCreateTransaction = false
     
     init(appState: AppState) {
         _vm = StateObject(wrappedValue: TransactionViewModel(appState: appState))
@@ -71,6 +83,19 @@ struct TransactionsView: View {
                 }
             }
             .navigationTitle("Groups")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showCreateTransaction = true
+                    } label: {
+                        Image(systemName: "plus")
+                            .foregroundColor(Color("PrimaryColor"))
+                    }
+                }
+            }
+            .sheet(isPresented: $showCreateTransaction) {
+                CreateTransactionView(vm: vm)
+            }
         }
         .onAppear {
             if vm.transactions.isEmpty && !vm.isLoading {
@@ -78,6 +103,137 @@ struct TransactionsView: View {
                     await vm.fetchTransactions()
                 }
             }
+        }
+    }
+}
+
+struct CreateTransactionView: View {
+    @ObservedObject var vm: TransactionViewModel
+    @Environment(\.dismiss) private var dismiss
+    
+    @State private var transactionName = ""
+    @State private var selectedUserIds: Set<String> = []
+    @State private var isSubmitting = false
+    @State private var errorMessage: String?
+    
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Transaction Details") {
+                    TextField("Name (e.g., 'Trip to Taos')", text: $transactionName)
+                }
+                
+                Section {
+                    ForEach(vm.allFriends) { friend in
+                        HStack {
+                            Toggle(isOn: Binding(
+                                get: { selectedUserIds.contains(friend.id) },
+                                set: { isSelected in
+                                    if isSelected {
+                                        selectedUserIds.insert(friend.id)
+                                    } else {
+                                        selectedUserIds.remove(friend.id)
+                                    }
+                                }
+                            )) {
+                                HStack {
+                                    Image(systemName: "person.circle.fill")
+                                        .foregroundColor(Color("PrimaryColor"))
+                                    Text(friend.username)
+                                }
+                            }
+                        }
+                    }
+                } header: {
+                    Text("Select Participants")
+                } footer: {
+                    Text("Select at least 2 participants (including yourself)")
+                        .font(.caption)
+                }
+                
+                if let errorMessage = errorMessage {
+                    Section {
+                        Text(errorMessage)
+                            .foregroundColor(.red)
+                            .font(.caption)
+                    }
+                }
+                
+                Section {
+                    Button {
+                        Task {
+                            await createTransaction()
+                        }
+                    } label: {
+                        if isSubmitting {
+                            HStack {
+                                ProgressView()
+                                Text("Creating...")
+                            }
+                        } else {
+                            Label("Create Group", systemImage: "checkmark.circle.fill")
+                        }
+                    }
+                    .disabled(isSubmitting || !isFormValid())
+                }
+            }
+            .navigationTitle("New Group")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                    .foregroundColor(.red)
+                }
+            }
+        }
+        .onAppear {
+            // Auto-select current user
+            selectedUserIds.insert(vm.myself.id)
+        }
+    }
+    
+    private func isFormValid() -> Bool {
+        // Check name is not empty
+        guard !transactionName.trimmingCharacters(in: .whitespaces).isEmpty else { return false }
+        
+        // Check at least 2 users selected
+        guard selectedUserIds.count >= 2 else { return false }
+        
+        return true
+    }
+    
+    func createTransaction() async {
+        errorMessage = nil
+        
+        guard !transactionName.trimmingCharacters(in: .whitespaces).isEmpty else {
+            errorMessage = "Please enter a transaction name"
+            return
+        }
+        
+        guard selectedUserIds.count >= 2 else {
+            errorMessage = "Please select at least 2 participants"
+            return
+        }
+        
+        isSubmitting = true
+        defer { isSubmitting = false }
+        
+        let body: [String: Any] = [
+            "name": transactionName.trimmingCharacters(in: .whitespaces),
+            "user_ids": Array(selectedUserIds)
+        ]
+        
+        do {
+            try await SquareUpClient.shared.POST(
+                endpoint: "/api/create-transaction",
+                body: body
+            )
+            await vm.fetchTransactions()
+            dismiss()
+        } catch {
+            errorMessage = "Failed to create transaction: \(error.localizedDescription)"
         }
     }
 }
@@ -194,13 +350,14 @@ struct TransactionCard: View {
     
     // Helper: Resolve user name
     private func username(for id: String) -> String {
-        if let friend = vm.friends.first(where: { $0.id == id }) {
+        if let friend = vm.transactionFriends.first(where: { $0.id == id }) {
             return friend.username
         } else {
             return "User"
         }
     }
 }
+
 struct ContributionDetailView: View {
     @ObservedObject var vm: TransactionViewModel
     let contribution: Contribution
@@ -328,7 +485,7 @@ struct ContributionDetailView: View {
     
     // Helper: Resolve user name
     private func username(for id: String) -> String {
-        vm.friends.first(where: { $0.id == id })?.username ?? "User"
+        vm.transactionFriends.first(where: { $0.id == id })?.username ?? "User"
     }
 }
 
@@ -350,7 +507,7 @@ struct AddContributionView: View {
     
     // Get available receivers (all users except current user)
     private var availableReceivers: [Friend] {
-        vm.friends.filter { $0.id != currentUserId && transaction.userIds.contains($0.id) }
+        vm.transactionFriends.filter { $0.id != currentUserId && transaction.userIds.contains($0.id) }
     }
     
     private var computedTotal: Double {
@@ -509,4 +666,3 @@ struct AddContributionView: View {
         }
     }
 }
-

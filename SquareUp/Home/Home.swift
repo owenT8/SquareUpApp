@@ -13,29 +13,27 @@ struct Home: View {
     
     var body: some View {
         ZStack {
-            // MARK: - Swipeable Pages
             TabView(selection: $selection) {
-                Social()
-                    .padding(.bottom, 80)
+                SocialFeedView(appState: appState)
                     .tag(0)
                 TransactionsView(appState: appState)
-                    .padding(.bottom, 80)
                     .tag(1)
                 Profile()
-                    .padding(.bottom, 80)
                     .tag(2)
             }
             // Swipe horizontally between pages
             .tabViewStyle(.page(indexDisplayMode: .never))
             .animation(.spring(response: 0.4, dampingFraction: 0.8), value: selection)
-            .ignoresSafeArea(.keyboard, edges: .bottom)
+            .ignoresSafeArea(.all)
             
             VStack {
                 Spacer()
                 FloatingTabBar(selection: $selection)
+                    .padding(.bottom, 30)
             }
-            .padding(.bottom, 12)
+            .ignoresSafeArea(.keyboard, edges: .bottom)
         }
+        .ignoresSafeArea(.all)
     }
 }
 

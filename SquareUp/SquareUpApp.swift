@@ -21,8 +21,8 @@ struct SquareUpApp: App {
                     if let _ = TokenManager.shared.accessToken {
                         Task {
                             do {
-                                let response = try await SquareUpClient.shared.verifyToken()
-                                appState.isLoggedIn = response.0
+                                let (response, data) = try await SquareUpClient.shared.verifyToken()
+                                appState.isLoggedIn = response
                             } catch {
                                 showError()
                             }

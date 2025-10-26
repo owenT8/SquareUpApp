@@ -105,7 +105,9 @@ struct CreateAccountForm: View {
                                     button: button,
                                     isLoading: isLoading,
                                     onTap: {
-                                        buttonPress(button: button)
+                                        if (validateForm(fieldValues: &fieldValues, fieldErrors: &fieldErrors)) {
+                                            buttonPress(button: button)
+                                        }
                                     }
                                 )
                                 .padding(.horizontal, 30)

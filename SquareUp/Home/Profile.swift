@@ -46,41 +46,11 @@ class ProfileViewModel: ObservableObject {
         if let savedEmail = UserDefaults.standard.string(forKey: "profile_email") {
             email = savedEmail
         }
-        fetchData()
+        if let savedUserid = UserDefaults.standard.string(forKey: "profile_user_id") {
+            user_id = savedUserid
+        }
         fetchFriends()
         fetchFriendRequests()
-    }
-
-    func fetchData() {
-        isLoading = true
-        // Simulate network delay
-        DispatchQueue.main.asyncAfter(deadline: .now()) {
-            Task {
-                do {
-                    let (_, data) = try await SquareUpClient.shared.verifyToken()
-                    await MainActor.run {
-                        self.items = data
-                        if let username = data["username"] as? String {
-                            self.username = username
-                            UserDefaults.standard.set(username, forKey: "profile_username")
-                        }
-                        if let email = data["email"] as? String {
-                            self.email = email
-                            UserDefaults.standard.set(email, forKey: "profile_email")
-                        }
-                        if let user_id = data["user_id"] as? String {
-                            self.user_id = user_id
-                            UserDefaults.standard.set(user_id, forKey: "profile_user_id")
-                        }
-                        self.isLoading = false
-                    }
-                } catch {
-                    await MainActor.run {
-                        self.isLoading = false
-                    }
-                }
-            }
-        }
     }
     
     func fetchFriends() {
@@ -126,7 +96,6 @@ class ProfileViewModel: ObservableObject {
     }
 
     func refresh() {
-        fetchData() // same function, could call API again
         fetchFriends()
     }
 
@@ -312,7 +281,7 @@ struct Profile: View {
                             
                             // Outgoing Friend Requests Button
                             FriendListButton(
-                                title: "Pending Requests",
+                                title: "Sent Requests",
                                 friends: profileViewModel.outgoingFriendRequests,
                                 onTap: { currentSheet = .outgoingFriendRequests }
                             )

@@ -72,6 +72,7 @@ struct Contribution: Codable, Identifiable {
     let createdAt: Date
 
     enum CodingKeys: String, CodingKey {
+        case id = "contribution_id"
         case senderId = "sender_id"
         case description
         case totalAmount = "total_amount"
@@ -81,6 +82,7 @@ struct Contribution: Codable, Identifiable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
         senderId = try container.decode(String.self, forKey: .senderId)
         description = try container.decode(String.self, forKey: .description)
         totalAmount = try container.decode(Double.self, forKey: .totalAmount)
@@ -108,8 +110,6 @@ struct Contribution: Codable, Identifiable {
         } else {
             throw DecodingError.dataCorruptedError(forKey: .createdAt, in: container, debugDescription: "Could not decode date")
         }
-        
-        self.id = "\(senderId)-\(createdAt.timeIntervalSince1970)-\(description.hashValue)"
     }
 }
 

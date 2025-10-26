@@ -60,9 +60,7 @@ struct SquareUpClient {
         }
         
         request.httpBody = try JSONSerialization.data(withJSONObject: body, options: [])
-        
-        print(body)
-                
+                        
         let (data, response) = try await URLSession.shared.data(for: request)
         
         return (data, response)
@@ -91,7 +89,7 @@ struct SquareUpClient {
         if statusCode == 201 {
             if let token = json["token"] {
                 TokenManager.shared.saveToken(access: token)
-
+                try await setUserDefaults(data: json)
             }
         }
         
@@ -113,6 +111,7 @@ struct SquareUpClient {
             if let token = json["token"] {
                 TokenManager.shared.saveToken(access: token)
             }
+            try await setUserDefaults(data: json)
         }
         
         return statusCode
@@ -126,6 +125,7 @@ struct SquareUpClient {
         }
                     
         if (json["valid"] != nil) == true {
+            try await setUserDefaults(data: json)
             return (true, json)
         } else {
             return (false, [:])
@@ -262,6 +262,30 @@ struct SquareUpClient {
         }
     }
     
+    func fetchSocialContributions(limit: Int = 15, afterId: String? = nil) async throws -> ([Contribution], [Friend]) {
+        struct Response: Codable {
+            let contributions: [Contribution]
+            let user_details: [Friend]
+        }
+        var parameters = ["limit": limit] as [String: Any]
+        if afterId != nil {
+            parameters["afterId"] = afterId
+        }
+        let (data, response) = try await self.GET(endpoint: "/api/get-contributions", parameters: parameters)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw URLError(.badServerResponse)
+        }
+        guard httpResponse.statusCode == 200 else {
+            throw URLError(.badServerResponse)
+        }
+        
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let result = try decoder.decode(Response.self, from: data)
+        return (result.contributions, result.user_details)
+    }
+    
     func fetchFriendRequests() async throws -> (incoming: [Friend], outgoing: [Friend]) {
         let (data, response) = try await self.GET(endpoint: "/api/get-friend-requests")
         guard let statusCode = (response as? HTTPURLResponse)?.statusCode, statusCode == 200 else {
@@ -302,4 +326,28 @@ struct SquareUpClient {
         }
         return true
     }
+    
+    func setUserDefaults(data: [String: Any]) async throws {
+        await MainActor.run {
+            if let username = data["username"] as? String {
+                UserDefaults.standard.set(username, forKey: "profile_username")
+            }
+            if let email = data["email"] as? String {
+                UserDefaults.standard.set(email, forKey: "profile_email")
+            }
+            if let user_id = data["user_id"] as? String {
+                UserDefaults.standard.set(user_id, forKey: "profile_user_id")
+            }
+            if let first_name = data["first_name"] as? String {
+                UserDefaults.standard.set(first_name, forKey: "profile_first_name")
+            }
+            if let last_name = data["last_name"] as? String {
+                UserDefaults.standard.set(last_name, forKey: "profile_last_name")
+            }
+            if let full_name = data["name"] as? String {
+                UserDefaults.standard.set(full_name, forKey: "profile_full_name")
+            }
+        }
+    }
 }
+

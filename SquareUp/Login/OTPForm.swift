@@ -80,6 +80,7 @@ struct OTPForm: View {
                                         isLoading = false
                                         if response == 200 {
                                             fieldValues = [:]
+                                            
                                             appState.isLoggedIn = true
                                             appState.currentScreenGroup = .main
                                         } else {
