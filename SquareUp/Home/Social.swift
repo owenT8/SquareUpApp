@@ -165,6 +165,7 @@ struct SocialFeedView: View {
                     )
                 }
             }
+            .scrollIndicators(.hidden)
             .navigationTitle("Activity")
         }
         .scenePadding(.horizontal)

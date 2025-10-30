@@ -13,6 +13,9 @@ class TransactionViewModel: ObservableObject {
     @Published var transactions: [Transaction] = []
     @Published var transactionFriends: [Friend] = []
     @Published var allFriends: [Friend] = []
+    @Published var showLastDeleteConfirmation = false
+    @Published var pendingDeleteTransaction: Transaction?
+    var pendingDeleteCancelCallback: (() -> Void)?
     
     @Published var myself: Friend = Friend(
         id: UserDefaults.standard.string(forKey: "profile_user_id")!,
@@ -40,6 +43,68 @@ class TransactionViewModel: ObservableObject {
             appState.errorMessage = "Failed to fetch transactions."
         }
     }
+    
+    func voteToDelete(transaction: Transaction, userId: String, onCancel: @escaping () -> Void = {}) async {
+        // Check if this is the last person to vote
+        let currentVotes = transaction.votesToDelete?.count ?? 0
+        let totalUsers = transaction.userIds.count
+        
+        if currentVotes == totalUsers - 1 {
+            // This is the last person - show confirmation
+            pendingDeleteTransaction = transaction
+            pendingDeleteCancelCallback = onCancel
+            showLastDeleteConfirmation = true
+        } else {
+            // Not the last person - proceed normally
+            await performVoteToDelete(transaction: transaction, userId: userId)
+        }
+    }
+    // Separated logic for actual API call
+    func performVoteToDelete(transaction: Transaction, userId: String) async {
+        let body: [String: Any] = [
+            "transaction_id": transaction.id
+        ]
+        do {
+            try await SquareUpClient.shared.POST(
+                endpoint: "/api/add-vote-to-delete-transaction",
+                body: body
+            )
+            // Update votesToDelete locally
+            if let index = transactions.firstIndex(where: { $0.id == transaction.id }) {
+                if !(transactions[index].votesToDelete ?? []).contains(userId) {
+                    if transactions[index].votesToDelete == nil {
+                        transactions[index].votesToDelete = [userId]
+                    } else {
+                        transactions[index].votesToDelete!.append(userId)
+                    }
+                }
+            }
+            await fetchTransactions()
+        } catch {
+            // Handle error silently or optionally notify
+        }
+    }
+    
+    func unvoteToDelete(transaction: Transaction, userId: String) async {
+        let body: [String: Any] = [
+            "transaction_id": transaction.id
+        ]
+        do {
+            try await SquareUpClient.shared.POST(
+                endpoint: "/api/remove-vote-to-delete-transaction",
+                body: body
+            )
+            // Update votesToDelete locally
+            if let index = transactions.firstIndex(where: { $0.id == transaction.id }) {
+                if var votes = transactions[index].votesToDelete, let idx = votes.firstIndex(of: userId) {
+                    votes.remove(at: idx)
+                    transactions[index].votesToDelete = votes
+                }
+            }
+        } catch {
+            // Handle error silently or optionally notify
+        }
+    }
 }
 
 struct TransactionsView: View {
@@ -54,7 +119,7 @@ struct TransactionsView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Color(Color("BackgroundColor")) // Or Color("YourColor")
+                Color(Color("BackgroundColor"))
                     .ignoresSafeArea()
                 Group {
                     if vm.isLoading && vm.transactions.isEmpty {
@@ -88,6 +153,7 @@ struct TransactionsView: View {
                 }
             }
             .navigationTitle("Groups")
+            .scrollIndicators(.hidden)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -97,6 +163,25 @@ struct TransactionsView: View {
                             .foregroundColor(Color("PrimaryColor"))
                     }
                 }
+            }
+            .alert("Confirm Delete", isPresented: $vm.showLastDeleteConfirmation) {
+                Button("Cancel", role: .cancel) {
+                    vm.pendingDeleteCancelCallback?()
+                    vm.pendingDeleteTransaction = nil
+                    vm.pendingDeleteCancelCallback = nil
+                }
+                Button("Delete", role: .destructive) {
+                    if let transaction = vm.pendingDeleteTransaction,
+                       let userId = UserDefaults.standard.string(forKey: "profile_user_id") {
+                        Task {
+                            await vm.performVoteToDelete(transaction: transaction, userId: userId)
+                        }
+                    }
+                    vm.pendingDeleteTransaction = nil
+                    vm.pendingDeleteCancelCallback = nil
+                }
+            } message: {
+                Text("You are the last person to Square Up, are you sure you want to delete this balance?")
             }
         }
         .scenePadding(.horizontal)
@@ -248,6 +333,7 @@ struct TransactionCard: View {
     @State private var isExpanded = false
     @State private var showAddContribution = false
     @State private var selectedContribution: Contribution? = nil
+    @State private var hasVoted = false
     
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -338,6 +424,13 @@ struct TransactionCard: View {
                 .sheet(isPresented: $showAddContribution) {
                     AddContributionView(transaction: transaction, vm: vm)
                 }
+                
+                SquareUpSwipeControl(
+                    hasVoted: $hasVoted,
+                    transaction: transaction,
+                    vm: vm
+                )
+                .padding(.top, 12)
             }
         }
         .padding()
@@ -348,6 +441,10 @@ struct TransactionCard: View {
         .padding(.horizontal)
         .sheet(item: $selectedContribution) { contribution in
             ContributionDetailView(vm: vm, contribution: contribution, transaction: transaction)
+        }
+        .onAppear {
+            let userId = UserDefaults.standard.string(forKey: "profile_user_id")
+            hasVoted = userId != nil && (transaction.votesToDelete ?? []).contains(userId!)
         }
     }
     
@@ -666,6 +763,159 @@ struct AddContributionView: View {
             dismiss()
         } catch {
             errorMessage = "Failed to add contribution: \(error.localizedDescription)"
+        }
+    }
+}
+
+
+struct SquareUpSwipeControl: View {
+    @Binding var hasVoted: Bool
+    let transaction: Transaction
+    @ObservedObject var vm: TransactionViewModel
+    
+    @State private var dragOffset: CGFloat = 0
+    @GestureState private var isDragging = false
+    @State private var lastHapticTrigger: CGFloat = 0
+    
+    private let swipeThreshold: CGFloat = 100
+    private let maxSwipeDistance: CGFloat = 240
+    private let startingPosition: CGFloat = 5
+    private let hapticInterval: CGFloat = 10 // Trigger haptic every 20 points
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color(.systemGray6))
+                    .frame(height: 60)
+                
+                currentText()
+                    .fontWeight(.semibold)
+                    .foregroundColor(Color("PrimaryColor"))
+                    .animation(Animation.spring(duration: 0.3), value: hasVoted)
+                
+                HStack {
+                    RoundedRectangle(cornerRadius: morphCornerRadius())
+                        .fill(Color("PrimaryColor"))
+                        .frame(width: 50, height: 50)
+                        .offset(x: shapeOffset())
+                        .shadow(radius: 2)
+                        .animation(Animation.spring(duration: 0.3), value: dragOffset)
+                        .animation(Animation.spring(duration: 0.3), value: hasVoted)
+                    
+                    Spacer()
+                }
+            }
+            .gesture(
+                DragGesture(minimumDistance: 5)
+                    .updating($isDragging) { value, state, _ in
+                        state = true
+                    }
+                    .onChanged { value in
+                        dragOffset = value.translation.width
+                        triggerProgressiveHaptics(translation: value.translation.width)
+                    }
+                    .onEnded { value in
+                        let userId = UserDefaults.standard.string(forKey: "profile_user_id") ?? ""
+                        if value.translation.width > swipeThreshold {
+                            // Swipe right -> vote
+                            if !hasVoted {
+                                triggerSuccessHaptic()
+                                hasVoted = true
+                                Task {
+                                    await vm.voteToDelete(transaction: transaction, userId: userId) {
+                                        // Cancel callback - reset hasVoted
+                                        hasVoted = false
+                                    }
+                                }
+                            }
+                        } else if value.translation.width < -swipeThreshold {
+                            // Swipe left -> unvote
+                            if hasVoted {
+                                triggerSuccessHaptic()
+                                hasVoted = false
+                                Task {
+                                    await vm.unvoteToDelete(transaction: transaction, userId: userId)
+                                }
+                            }
+                        }
+                        
+                        dragOffset = 0
+                        lastHapticTrigger = 0
+                    }
+            )
+        }
+    }
+    
+    private func triggerProgressiveHaptics(translation: CGFloat) {
+        let effectiveDrag = hasVoted ? abs(min(translation, 0)) : max(translation, 0)
+        
+        // Calculate how many intervals we've crossed
+        let currentInterval = floor(effectiveDrag / hapticInterval)
+        let lastInterval = floor(lastHapticTrigger / hapticInterval)
+        
+        // Trigger haptic if we've crossed into a new interval
+        if currentInterval > lastInterval {
+            let progress = effectiveDrag / swipeThreshold
+            
+            // Vary haptic intensity based on progress
+            if progress < 0.3 {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            } else if progress < 0.7 {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            } else if progress < 1.0 {
+                UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+            } else {
+                // Past threshold - use rigid for stronger feedback
+                UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
+            }
+            
+            lastHapticTrigger = effectiveDrag
+        }
+    }
+    
+    private func triggerSuccessHaptic() {
+        let generator = UINotificationFeedbackGenerator()
+        generator.notificationOccurred(.success)
+    }
+    
+    private func morphCornerRadius() -> CGFloat {
+        let progress = morphProgress()
+        return 25 - (progress * 13)
+    }
+    
+    private func shapeOffset() -> CGFloat {
+        let basePosition: CGFloat = hasVoted ? maxSwipeDistance : startingPosition
+        
+        if hasVoted {
+            return max(startingPosition, basePosition + dragOffset)
+        } else {
+            return min(maxSwipeDistance, basePosition + max(0, dragOffset))
+        }
+    }
+    
+    private func morphProgress() -> CGFloat {
+        if hasVoted {
+            let dragProgress = abs(min(dragOffset, 0)) / (maxSwipeDistance - startingPosition)
+            return 1.0 - dragProgress
+        } else {
+            let dragProgress = max(dragOffset, 0) / maxSwipeDistance
+            return min(dragProgress, 1.0)
+        }
+    }
+    
+    @ViewBuilder
+    private func currentText() -> some View {
+        if hasVoted {
+            HStack {
+                Image(systemName: "chevron.left")
+                Text("Square Down")
+            }
+        } else {
+            HStack {
+                Text("Square Up")
+                Image(systemName: "chevron.right")
+            }
         }
     }
 }

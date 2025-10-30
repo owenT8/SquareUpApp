@@ -16,6 +16,7 @@ struct Transaction: Codable, Identifiable {
     let debts: [String: [String: Double]]
     let createdAt: Date
     let createdBy: String?
+    var votesToDelete: [String]?
 
     enum CodingKeys: String, CodingKey {
         case id = "transaction_id"
@@ -26,6 +27,7 @@ struct Transaction: Codable, Identifiable {
         case debts
         case createdAt = "created_at"
         case createdBy = "created_by"
+        case votesToDelete = "votes_to_delete"
     }
 
     init(from decoder: Decoder) throws {
@@ -37,6 +39,7 @@ struct Transaction: Codable, Identifiable {
         netAmounts = try container.decode([String: Double].self, forKey: .netAmounts)
         debts = try container.decode([String: [String: Double]].self, forKey: .debts)
         createdBy = try container.decodeIfPresent(String.self, forKey: .createdBy)
+        votesToDelete = try container.decodeIfPresent([String].self, forKey: .votesToDelete)
         // Flexible decode for createdAt
         if let doubleValue = try? container.decode(Double.self, forKey: .createdAt) {
             createdAt = Date(timeIntervalSince1970: doubleValue)
