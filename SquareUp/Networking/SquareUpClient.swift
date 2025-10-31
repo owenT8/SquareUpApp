@@ -327,6 +327,16 @@ struct SquareUpClient {
         return true
     }
     
+    func getVotesToDelete(transactionId: String) async throws -> [String] {
+        let (data, _) = try await self.GET(endpoint: "/api/get-votes-to-delete-transaction", parameters: ["transaction_id": transactionId])
+        let json = try JSONSerialization.jsonObject(with: data, options: [])
+        if let dict = json as? [String: Any], let userIds = dict["votes_to_delete"] as? [String] {
+            return userIds
+        } else {
+            return []
+        }
+    }
+    
     func setUserDefaults(data: [String: Any]) async throws {
         await MainActor.run {
             if let username = data["username"] as? String {

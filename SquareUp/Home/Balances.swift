@@ -46,10 +46,10 @@ class TransactionViewModel: ObservableObject {
     
     func voteToDelete(transaction: Transaction, userId: String, onCancel: @escaping () -> Void = {}) async {
         // Check if this is the last person to vote
-        let currentVotes = transaction.votesToDelete?.count ?? 0
+        let currentVotes = await getVotesToDelete(transaction: transaction)
         let totalUsers = transaction.userIds.count
         
-        if currentVotes == totalUsers - 1 {
+        if currentVotes.count == totalUsers - 1 {
             // This is the last person - show confirmation
             pendingDeleteTransaction = transaction
             pendingDeleteCancelCallback = onCancel
@@ -103,6 +103,16 @@ class TransactionViewModel: ObservableObject {
             }
         } catch {
             // Handle error silently or optionally notify
+        }
+    }
+    
+    func getVotesToDelete(transaction: Transaction) async -> [String] {
+        do {
+            let userIds = try await SquareUpClient.shared.getVotesToDelete(transactionId: transaction.id)
+            
+            return userIds
+        } catch {
+            return []
         }
     }
 }
