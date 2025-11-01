@@ -205,7 +205,6 @@ struct TransactionsView: View {
     }
 }
 
-
 struct CreateTransactionView: View {
     @ObservedObject var vm: TransactionViewModel
     @Environment(\.dismiss) private var dismiss
@@ -214,41 +213,46 @@ struct CreateTransactionView: View {
     @State private var selectedUserIds: Set<String> = []
     @State private var isSubmitting = false
     @State private var errorMessage: String?
+    @State private var showAddFriendsSheet: Bool = false
     
     var body: some View {
         NavigationStack {
             Form {
-                Section("Transaction Details") {
+                Section("Group Details") {
                     TextField("Name (e.g., 'Trip to Taos')", text: $transactionName)
                 }
                 
                 Section {
-                    ForEach(vm.allFriends) { friend in
-                        HStack {
-                            Toggle(isOn: Binding(
-                                get: { selectedUserIds.contains(friend.id) },
-                                set: { isSelected in
-                                    if isSelected {
-                                        selectedUserIds.insert(friend.id)
-                                    } else {
-                                        selectedUserIds.remove(friend.id)
-                                    }
-                                }
-                            )) {
-                                HStack {
-                                    Image(systemName: "person.circle.fill")
-                                        .foregroundColor(Color("PrimaryColor"))
-                                    Text(friend.username)
-                                }
+                    VStack {
+                        ForEach(vm.allFriends) { friend in
+                            if selectedUserIds.contains(friend.id) {
+                                FriendElement(friend: friend)
                             }
                         }
                     }
                 } header: {
                     Text("Select Participants")
                 } footer: {
-                    Text("Select at least 2 participants (including yourself)")
+                    Text("Select at least one other participant")
                         .font(.caption)
                 }
+                
+                Button {
+                    showAddFriendsSheet = true
+                } label: {
+                    Label("Add Participants", systemImage: "person.badge.plus")
+                        .font(.subheadline)  // Smaller font
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)  // Reduced vertical padding
+                        .background(Color("PrimaryColor"))
+                        .foregroundColor(.white)
+                        .cornerRadius(8)
+                }
+                .listRowInsets(EdgeInsets())
+                .padding(.horizontal)
+                .listRowBackground(Color.clear)
+                .padding(.top, -15)
+                
                 
                 if let errorMessage = errorMessage {
                     Section {
@@ -274,6 +278,7 @@ struct CreateTransactionView: View {
                         }
                     }
                     .disabled(isSubmitting || !isFormValid())
+                    .opacity((selectedUserIds.isEmpty || transactionName.isEmpty) ? 0.5 : 1.0)
                 }
             }
             .navigationTitle("New Group")
@@ -286,6 +291,9 @@ struct CreateTransactionView: View {
                     .foregroundColor(.red)
                 }
             }
+        }
+        .sheet(isPresented: $showAddFriendsSheet) {
+            AddFriendsSheet(vm: vm, friendsToAdd: $selectedUserIds)
         }
         .onAppear {
             // Auto-select current user
@@ -336,6 +344,103 @@ struct CreateTransactionView: View {
         }
     }
 }
+
+struct AddFriendsSheet: View {
+    @ObservedObject var vm: TransactionViewModel
+    @EnvironmentObject var appState: AppState
+    @Environment(\.dismiss) private var dismiss
+    @Binding var friendsToAdd: Set<String>
+    
+    var body: some View {
+        NavigationStack {
+            VStack {
+                if vm.allFriends.isEmpty {
+                    Spacer()
+                    Text("You have no friends yet.")
+                        .foregroundColor(.secondary)
+                    Spacer()
+                } else {
+                    List(vm.allFriends) { friend in
+                        HStack {
+                            FriendElement(friend: friend)
+                            Spacer()
+                            Button(action: {
+                                if friendsToAdd.contains(friend.id) {
+                                    friendsToAdd.remove(friend.id)
+                                } else {
+                                    friendsToAdd.insert(friend.id)
+                                }
+                            }) {
+                                HStack {
+                                    Image(systemName: friendsToAdd.contains(friend.id) ? "checkmark.square.fill" : "square")
+                                        .foregroundColor(friendsToAdd.contains(friend.id) ? Color("PrimaryColor") : .gray)
+                                }
+                            }
+                            .padding(10)
+                            .buttonStyle(.plain)
+                        }
+                        .background(
+                            RoundedRectangle(cornerRadius: 14)
+                                .fill(Color(.secondarySystemBackground))
+                        )
+                        .listRowSeparator(.hidden)
+                    }
+                    .listStyle(.plain)
+                }
+            }
+            .navigationTitle("Friends")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close") { dismiss() }
+                }
+            }
+        }
+    }
+}
+
+struct FriendElement: View {
+    let friend: Friend
+    
+    var body: some View {
+        HStack {
+            ZStack {
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color("PrimaryColor").opacity(0.9),
+                                Color("PrimaryColor").opacity(0.6)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .frame(width: 56, height: 56)
+                    .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+
+                Text(friend.firstName.prefix(1).uppercased() + friend.lastName.prefix(1).uppercased())
+                    .font(.system(size: 20, weight: .semibold))
+                    .foregroundColor(.white)
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(friend.name)
+                    .font(.headline)
+                    .foregroundColor(.primary)
+                Text("@\(friend.username)")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .listRowSeparator(.hidden)
+        .listRowBackground(Color.clear)
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 14)
+                .fill(Color(.secondarySystemBackground))
+        )
+    }
+}
+
 
 struct TransactionCard: View {
     let transaction: Transaction
@@ -929,3 +1034,4 @@ struct SquareUpSwipeControl: View {
         }
     }
 }
+

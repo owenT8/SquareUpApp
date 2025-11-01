@@ -228,6 +228,7 @@ enum ProfileSheet: Identifiable {
     case friends
     case incomingFriendRequests
     case outgoingFriendRequests
+    case settings
     
     var id: Self { self }
 }
@@ -301,6 +302,9 @@ struct Profile: View {
                             case .outgoingFriendRequests:
                                 OutgoingFriendRequestsSheet(vm: profileViewModel)
                                     .environmentObject(appState)
+                            case .settings:
+                                SettingsSidebarView()
+                                    .environmentObject(appState)
                             }
                         }
                     }
@@ -316,14 +320,8 @@ struct Profile: View {
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
-                        Menu {
-                            Button(role: .destructive) {
-                                TokenManager.shared.clearTokens()
-                                appState.currentScreenGroup = .login
-                                appState.isLoggedIn = false
-                            } label: {
-                                Label("Logout", systemImage: "rectangle.portrait.and.arrow.right")
-                            }
+                        Button {
+                            currentSheet = .settings
                         } label: {
                             Image(systemName: "gearshape.fill")
                                 .imageScale(.large)
@@ -717,7 +715,7 @@ struct OutgoingFriendRequestsSheet: View {
                     .listStyle(.plain)
                 }
             }
-            .navigationTitle("Pending Requests")
+            .navigationTitle("Sent Requests")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Close") { dismiss() }
@@ -815,6 +813,37 @@ struct AddFriendSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Close") { dismiss() }
+                }
+            }
+        }
+    }
+}
+
+struct SettingsSidebarView: View {
+    @EnvironmentObject var appState: AppState
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    Button(role: .destructive) {
+                        TokenManager.shared.clearTokens()
+                        appState.currentScreenGroup = .login
+                        appState.isLoggedIn = false
+                        dismiss()
+                    } label: {
+                        Label("Logout", systemImage: "rectangle.portrait.and.arrow.right")
+                    }
+                }
+            }
+            .navigationTitle("Settings")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
                 }
             }
         }
