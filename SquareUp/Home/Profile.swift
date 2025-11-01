@@ -827,6 +827,13 @@ struct SettingsSidebarView: View {
         NavigationStack {
             List {
                 Section {
+                    Button {
+                        if let url = URL(string: "mailto:support@squareupapp.com") {
+                            UIApplication.shared.open(url)
+                        }
+                    } label: {
+                        Label("Contact Support", systemImage: "envelope")
+                    }
                     Button(role: .destructive) {
                         TokenManager.shared.clearTokens()
                         appState.currentScreenGroup = .login

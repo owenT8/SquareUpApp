@@ -16,6 +16,7 @@ struct OTPField: View {
 
     var body: some View {
         VStack(spacing: 12) {
+            Text("Check your email for a verification code")
             HStack(spacing: 10) {
                 ForEach(0..<length, id: \.self) { index in
                     ZStack {
