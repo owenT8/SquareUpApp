@@ -584,39 +584,39 @@ struct IncomingFriendRequestsSheet: View {
                                     .foregroundColor(.secondary)
                             }
                             Spacer()
-                            HStack {
-                                Button {
-                                    Task {
-                                        await vm.acceptFriendRequest(username: friend.id, appState: appState)
-                                        dismiss()
-                                    }
-                                } label: {
-                                    Image(systemName: "checkmark")
-                                        .font(.system(size: 16, weight: .bold))
-                                        .foregroundColor(.white)
-                                        .frame(width: 40, height: 32)
-                                        .background(
-                                            RoundedRectangle(cornerRadius: 8)
-                                                .fill(Color.green)
-                                        )
+                            Button {
+                                Task {
+                                    await vm.acceptFriendRequest(username: friend.id, appState: appState)
+                                    dismiss()
                                 }
-                                
-                                Button {
-                                    Task {
-                                        await vm.rejectFriendRequest(username: friend.id, appState: appState)
-                                        dismiss()
-                                    }
-                                } label: {
-                                    Image(systemName: "xmark")
-                                        .font(.system(size: 16, weight: .bold))
-                                        .foregroundColor(.white)
-                                        .frame(width: 40, height: 32)
-                                        .background(
-                                            RoundedRectangle(cornerRadius: 8)
-                                                .fill(Color.red)
-                                        )
-                                }
+                            } label: {
+                                Image(systemName: "checkmark")
+                                    .font(.system(size: 16, weight: .bold))
+                                    .foregroundColor(.white)
+                                    .frame(width: 40, height: 32)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .fill(Color.green)
+                                    )
                             }
+                            .buttonStyle(.plain)
+                            Spacer()
+                            Button {
+                                Task {
+                                    await vm.rejectFriendRequest(username: friend.id, appState: appState)
+                                    dismiss()
+                                }
+                            } label: {
+                                Image(systemName: "xmark")
+                                    .font(.system(size: 16, weight: .bold))
+                                    .foregroundColor(.white)
+                                    .frame(width: 40, height: 32)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .fill(Color.red)
+                                    )
+                            }
+                            .buttonStyle(.plain)
                         }
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)

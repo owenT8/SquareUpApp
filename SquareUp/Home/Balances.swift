@@ -227,6 +227,11 @@ struct CreateTransactionView: View {
                         ForEach(vm.allFriends) { friend in
                             if selectedUserIds.contains(friend.id) {
                                 FriendElement(friend: friend)
+                                    .frame(maxWidth: .infinity, alignment: .leading)  // Add this
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 14)
+                                            .fill(Color(.secondarySystemBackground))
+                                    )
                             }
                         }
                     }
