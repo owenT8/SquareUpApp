@@ -828,6 +828,13 @@ struct SettingsSidebarView: View {
             List {
                 Section {
                     Button {
+                        if let url = URL(string: "https://squareupapp.com/privacy") {
+                            UIApplication.shared.open(url)
+                        }
+                    }label: {
+                        Label("Privacy Policy", systemImage: "lock.fill")
+                    }
+                    Button {
                         if let url = URL(string: "mailto:support@squareupapp.com") {
                             UIApplication.shared.open(url)
                         }
