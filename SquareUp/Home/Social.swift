@@ -109,44 +109,66 @@ struct SocialFeedView: View {
             ZStack {
                 Color("BackgroundColor")
                     .ignoresSafeArea()
+                
                 if vm.isLoading && vm.contributions.isEmpty {
                     ProgressView("Loading feed...")
-                } else if !vm.contributions.isEmpty {
+                } else {
                     List {
-                        ForEach(vm.contributions) { contribution in
-                            SocialContributionCard(contribution: contribution, vm: vm)
-                                .listRowInsets(EdgeInsets())
-                                .listRowSeparator(.hidden)
-                                .listRowBackground(Color.clear)
-                                .padding(.bottom, 16)
-                                .onAppear {
-                                    // Load more when we reach near the end
-                                    if contribution.id == vm.contributions.last?.id {
-                                        Task {
-                                            await vm.loadMoreContributions()
+                        if vm.contributions.isEmpty {
+                            // Empty state inside the list so refresh still works
+                            VStack(spacing: 16) {
+                                Image(systemName: "sparkles")
+                                    .font(.system(size: 60))
+                                    .foregroundColor(.secondary)
+                                Text("No Activity Yet")
+                                    .font(.headline)
+                                    .foregroundColor(.primary)
+                                Text("Contributions from your friends will appear here.\nPull down to refresh.")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.center)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.top, 100)
+                            .listRowInsets(EdgeInsets())
+                            .listRowSeparator(.hidden)
+                            .listRowBackground(Color.clear)
+                        } else {
+                            ForEach(vm.contributions) { contribution in
+                                SocialContributionCard(contribution: contribution, vm: vm)
+                                    .listRowInsets(EdgeInsets())
+                                    .listRowSeparator(.hidden)
+                                    .listRowBackground(Color.clear)
+                                    .padding(.bottom, 16)
+                                    .onAppear {
+                                        // Load more when we reach near the end
+                                        if contribution.id == vm.contributions.last?.id {
+                                            Task {
+                                                await vm.loadMoreContributions()
+                                            }
                                         }
                                     }
+                            }
+                            
+                            if vm.isLoadingMore {
+                                ProgressView()
+                                    .padding()
+                                    .listRowInsets(EdgeInsets())
+                                    .listRowSeparator(.hidden)
+                                    .listRowBackground(Color.clear)
+                            } else if !vm.hasMoreContent && !vm.contributions.isEmpty {
+                                HStack {
+                                    Spacer()
+                                    Text("You're all caught up! 🎉")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                    Spacer()
                                 }
-                        }
-                        
-                        if vm.isLoadingMore {
-                            ProgressView()
                                 .padding()
                                 .listRowInsets(EdgeInsets())
                                 .listRowSeparator(.hidden)
                                 .listRowBackground(Color.clear)
-                        } else if !vm.hasMoreContent && !vm.contributions.isEmpty {
-                            HStack {
-                                Spacer()
-                                Text("You're all caught up! 🎉")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                                Spacer()
                             }
-                            .padding()
-                            .listRowInsets(EdgeInsets())
-                            .listRowSeparator(.hidden)
-                            .listRowBackground(Color.clear)
                         }
                     }
                     .listStyle(.plain)
@@ -157,12 +179,6 @@ struct SocialFeedView: View {
                     .safeAreaInset(edge: .bottom) {
                         Color.clear.frame(height: 80)
                     }
-                } else {
-                    ContentUnavailableView(
-                        "No Activity Yet",
-                        systemImage: "sparkles",
-                        description: Text("Contributions from your friends will appear here.\nPull down to refresh.")
-                    )
                 }
             }
             .scrollIndicators(.hidden)

@@ -8,7 +8,7 @@
 import SwiftUI
 
 enum AppScreen {
-    case splash, login, createAccount, main
+    case splash, login, createAccount, main, tutorial
     
 }
 
@@ -17,14 +17,17 @@ struct ContentView: View {
     
     var body: some View {
         ZStack {
-            if (appState.showSplash || appState.currentScreenGroup == .splash) {
-                OpeningScreen(onNext: {appState.currentScreenGroup = .login})
+            if appState.showSplash || appState.currentScreenGroup == .splash {
+                OpeningScreen(onNext: { appState.currentScreenGroup = .login })
+            } else if appState.currentScreenGroup == .tutorial {
+                TutorialView()
+                    .transition(.opacity)
             } else if appState.isLoggedIn {
                 Home()
-            } else if (appState.currentScreenGroup == .login) {
+            } else if appState.currentScreenGroup == .login {
                 Login()
                     .transition(.opacity)
-            } else if (appState.currentScreenGroup == .createAccount) {
+            } else if appState.currentScreenGroup == .createAccount {
                 CreateAccount()
                     .transition(.opacity)
             }

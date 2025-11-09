@@ -132,10 +132,12 @@ struct TransactionsView: View {
                 Color(Color("BackgroundColor"))
                     .ignoresSafeArea()
                 Group {
-                    if vm.isLoading && vm.transactions.isEmpty {
-                        ProgressView("Loading transactions...")
-                    } else if !vm.transactions.isEmpty {
-                        ScrollView {
+                    ScrollView {
+                        if vm.isLoading && vm.transactions.isEmpty {
+                            ProgressView("Loading transactions...")
+                                .padding(.top, 100)
+
+                        } else if !vm.transactions.isEmpty {
                             VStack(spacing: 10) {
                                 ForEach(vm.transactions) { transaction in
                                     TransactionCard(transaction: transaction, vm: vm)
@@ -146,16 +148,17 @@ struct TransactionsView: View {
                                 }
                             }
                             .padding(.bottom, 100)
+                        } else {
+                            ContentUnavailableView(
+                                "No Groups Yet",
+                                systemImage: "person.3",
+                                description: Text("Pull down to refresh")
+                            )
+                            .padding(.top, 100)
                         }
-                        .refreshable {
-                            await vm.fetchTransactions()
-                        }
-                    } else {
-                        ContentUnavailableView(
-                            "No Transactions",
-                            systemImage: "tray",
-                            description: Text("Pull down to refresh")
-                        )
+                    }
+                    .refreshable {
+                        await vm.fetchTransactions()
                     }
                 }
                 .sheet(isPresented: $showCreateTransaction) {
@@ -236,7 +239,7 @@ struct CreateTransactionView: View {
                         }
                     }
                 } header: {
-                    Text("Select Participants")
+                    Text("Participants")
                 } footer: {
                     Text("Select at least one other participant")
                         .font(.caption)

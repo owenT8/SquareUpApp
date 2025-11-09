@@ -61,6 +61,7 @@ struct CreateAccount: View {
             }
             if screenStack.last == .exit {
                 appState.isLoggedIn = true
+                appState.currentScreenGroup = .tutorial
             }
             if screenStack.last == .error {
                 appState.currentScreenGroup = .login
