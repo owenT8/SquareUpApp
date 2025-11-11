@@ -66,6 +66,26 @@ struct SquareUpClient {
         return (data, response)
     }
     
+    func DELETE(endpoint: String) async throws -> URLResponse {
+        var components = URLComponents(string: host)!
+        components.path = endpoint
+        
+        guard let url = components.url else {
+            throw URLError(.badURL)
+        }
+        
+        var request = URLRequest(url: url)
+        request.httpMethod = "DELETE"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let token = TokenManager.shared.accessToken {
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        }
+                                
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        return response
+    }
+    
     func sendOtpCode(data: [String: String]) async throws -> Int {
         let (_, response) = try await self.POST(endpoint: "/api/send-otp", body: data)
 
@@ -335,6 +355,15 @@ struct SquareUpClient {
         } else {
             return []
         }
+    }
+    
+    func deleteAccount() async throws -> Bool {
+        let response = try await self.DELETE(endpoint: "/api/delete-user")
+        
+        guard let statusCode = (response as? HTTPURLResponse)?.statusCode, statusCode == 200 else {
+            return false
+        }
+        return true
     }
     
     func setUserDefaults(data: [String: Any]) async throws {

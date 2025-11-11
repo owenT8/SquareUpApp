@@ -821,6 +821,7 @@ struct AddFriendSheet: View {
 
 struct SettingsSidebarView: View {
     @EnvironmentObject var appState: AppState
+    @State private var showConfirm = false
     @Environment(\.dismiss) private var dismiss
     
     var body: some View {
@@ -860,6 +861,38 @@ struct SettingsSidebarView: View {
                     }
                 }
             }
+        }
+        
+        Spacer()
+        
+        Button {
+            showConfirm = true
+        } label : {
+            Label("Delete Account", systemImage: "person.crop.circle")
+                .foregroundColor(.red)
+        }
+        .confirmationDialog(
+            "Are you sure you want to delete your account? This cannot be undone.",
+            isPresented: $showConfirm,
+            titleVisibility: .visible   // optional, you can hide the title
+        ) {
+            Button("Delete", role: .destructive) {
+                Task {
+                    let success = try await SquareUpClient.shared.deleteAccount()
+                    if !success {
+                        appState.errorMessage = "Failed to delete your account."
+                        appState.showErrorToast = true
+                        return
+                    }
+                    TokenManager.shared.clearTokens()
+                    appState.currentScreenGroup = .login
+                    appState.isLoggedIn = false
+                    appState.successMessage = "Your account has been deleted."
+                    appState.showSuccessToast = true
+                    dismiss()
+                }
+            }
+            Button("Cancel", role: .cancel) { }   // this button is optional
         }
     }
 }
